@@ -1,4 +1,4 @@
-"""Implementación de su agente.
+﻿"""Implementación de su agente.
 
 Completen `register_tool` y `run` para el Milestone 1.
 En el Milestone 2 amplíen `MyAgent` para que sea estatal y respete
@@ -11,10 +11,11 @@ Los tests de conformidad en `tests/conformance/test_m1.py` y
 
 from __future__ import annotations
 
+import json
 from typing import Any, Callable
 
 from mia_agents.protocols import LLMClient
-from mia_agents.types import AgentResult, ToolSchema
+from mia_agents.types import AgentResult, AgentStep, ToolSchema
 
 
 class MyAgent:
@@ -48,7 +49,11 @@ class MyAgent:
         self._system = system_prompt
         self._max_iterations = max_iterations
         self._max_history_messages = max_history_messages
-        # TODO (M1): inicializa el estado interno para las herramientas registradas.
+        
+        # Inicializa el estado interno para las herramientas registradas.
+        self._tools: dict[str, Callable[..., str]] = {}
+        self._schemas: dict[str, ToolSchema] = {}
+        
         # TODO (M2): inicializa la estructura de historial conversacional.
 
     def register_tool(
@@ -56,7 +61,8 @@ class MyAgent:
         tool: Callable[..., str],
         schema: ToolSchema,
     ) -> None:
-        """Registra una herramienta callable junto a su esquema.
+        """
+        Registra una herramienta callable junto a su esquema.
 
         El esquema suele obtenerse con `ToolSchema.from_callable(fn)`. En
         `run`, pasá `tools=list(self._schemas.values())`; el cliente LLM
@@ -65,10 +71,12 @@ class MyAgent:
         El callable se invoca con kwargs que coinciden con la firma.
         Debe devolver una cadena.
         """
-        raise NotImplementedError("M1: implementa el registro de herramientas")
+        self._tools[schema.name] = tool
+        self._schemas[schema.name] = schema
 
     def run(self, user_message: str) -> AgentResult:
-        """Ejecuta el bucle del agente hasta una respuesta final o hasta max_iterations.
+        """
+        Ejecuta el bucle del agente hasta una respuesta final o hasta max_iterations.
 
         Comportamiento esperado (consulta tests/conformance/test_m1.py
         para el contrato exacto del M1):
@@ -91,8 +99,67 @@ class MyAgent:
         `LLMResponse` y exponlos en `AgentResult.input_tokens` /
         `AgentResult.output_tokens`.
         """
-        raise NotImplementedError("M1: implementa el bucle del agente")
+        
+        messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
+        steps: list[AgentStep] = []
 
+        for _ in range(self._max_iterations):
+            resp = self._llm.chat(
+                messages=messages,
+                tools=list(self._schemas.values()),
+                system=self._system,
+            )
+
+            # Si no hay herramientas para ejecutar, esta es la respuesta final.
+            if not resp.tool_calls:
+                return AgentResult(answer=resp.content or "", steps=steps)
+
+            # Guardamos que el asistente pidio ejecutar herramientas.
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": resp.content or "",
+                    "tool_calls": [
+                        {
+                            "id": tool_call.id,
+                            "function": {
+                                "name": tool_call.name,
+                                "arguments": tool_call.arguments,
+                            },
+                        }
+                        for tool_call in resp.tool_calls
+                    ],
+                }
+            )
+
+            # Ejecutamos cada herramienta y agregamos su resultado al historial.
+            for tool_call in resp.tool_calls:
+                args = json.loads(tool_call.arguments)
+                tool = self._tools[tool_call.name]
+                output = tool(**args)
+
+                steps.append(
+                    AgentStep(
+                        tool_name=tool_call.name,
+                        tool_input=tool_call.arguments,
+                        tool_output=output,
+                    )
+                )
+
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": output,
+                    }
+                )
+
+        return AgentResult(
+            answer="",
+            steps=steps,
+            error="Se alcanzo el limite de iteraciones sin respuesta final.",
+        )
+        
     def structured_call(
         self,
         prompt: str,
@@ -121,3 +188,4 @@ class MyAgent:
         El M1 deja esto como stub; los tests de M2 verifican el contrato.
         """
         raise NotImplementedError("M2: implementa salida estructurada con reparación")
+

@@ -1,4 +1,4 @@
-"""Paquete propio del grupo.
+﻿"""Paquete propio del grupo.
 
 Implementen el agente en `agent.py` y registren sus herramientas a
 continuación, en `build_agent`. Tanto el runner de la CLI como los tests
@@ -22,9 +22,6 @@ def build_agent(config: dict[str, Any] | None = None) -> Agent:
     `config` es opcional. Si se proporciona `config["llm_client"]`, el
     agente debe usarlo (así es como los tests de conformidad inyectan un
     cliente mock). Si no, se construye a partir del entorno.
-
-    TODO (M1): instancien su agente y llamen a `agent.register_tool(...)`
-    por cada una de sus herramientas antes de devolverlo.
     """
 
     config = config or {} #NO CAMBIAR
@@ -36,8 +33,8 @@ def build_agent(config: dict[str, Any] | None = None) -> Agent:
 
     agent = MyAgent(**kwargs)
 
-    # Ejemplo de registro (elimínenlo cuando sus herramientas estén listas):
-    # from student_framework.tools.example import reverse_string, reverse_string_schema
-    # agent.register_tool(reverse_string, reverse_string_schema)
+    # Registro calculadora
+    from student_framework.tools.calculator import calculator, calculator_schema
+    agent.register_tool(calculator, calculator_schema)
 
     return agent
