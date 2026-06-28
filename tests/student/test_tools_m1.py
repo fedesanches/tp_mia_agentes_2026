@@ -50,7 +50,7 @@ def test_encadenar_dos_herramientas(tmp_path):
 
     assert [s.tool_name for s in result.steps] == ["file_reader", "calculator"]
     assert result.steps[0].tool_output == "21"
-    assert result.steps[1].tool_output == "42"
+    assert result.steps[1].tool_output == "42.0"
     assert result.answer == "El doble es 42."
     assert mock.call_count == 3
 
@@ -117,6 +117,6 @@ def test_respuesta_final_proviene_del_llm():
     ])
     result = build_agent({"llm_client": mock}).run("sumá 2+2")
 
-    assert result.steps[0].tool_output == "4"
+    assert result.steps[0].tool_output == "4.0"
     assert result.answer == "El resultado final es 4."
     assert mock.call_count == 2
