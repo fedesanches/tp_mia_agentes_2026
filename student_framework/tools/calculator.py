@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 from typing import Annotated
-
 from pydantic import Field
-
 from mia_agents.types import ToolSchema
-
-Number = int | float
 
 
 def calculator(
-    left_operand: Annotated[Number, Field(description="Primer operando numerico.")],
-    right_operand: Annotated[Number, Field(description="Segundo operando numerico.")],
-    operator: Annotated[str, Field(description="Operador binario: +, -, * o %.")],
+    left_operand:  Annotated[float, Field(description="El primer operando (numero de la izquierda).")],
+    right_operand: Annotated[float, Field(description="El segundo operando (numero de la derecha).")],
+    operator:      Annotated[str, Field(description="Operador aritmetico a aplicar. Valores validos: '+' (suma), '-' (resta), '*' (multiplicacion), '%' (modulo o resto de la division entera).")],
 ) -> str:
-    """Calcula una operacion binaria simple con operadores +, -, * o %."""
+    """
+    Realiza una operacion aritmetica binaria entre dos numeros. 
+    Soporta suma (+), resta (-), multiplicacion (*) y modulo (%). 
+    Devuelve el resultado como texto. Usar para cualquier calculo matematico basico.
+    """
+    
     left_operand = float(left_operand)
     right_operand = float(right_operand)
 
@@ -33,8 +34,6 @@ def calculator(
     else:
         return f"Error: operador no soportado: {operator}"
 
-    if result.is_integer():
-        return str(int(result))
     return str(result)
 
 

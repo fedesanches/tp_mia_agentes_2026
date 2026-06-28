@@ -106,13 +106,16 @@ class MyAgent:
         for _ in range(self._max_iterations):
             resp = self._llm.chat(
                 messages=messages,
-                tools=list(self._schemas.values()),
+                tools=list(self._schemas.values()) if self._schemas else None,
                 system=self._system,
             )
 
             # Si no hay herramientas para ejecutar, esta es la respuesta final.
             if not resp.tool_calls:
-                return AgentResult(answer=resp.content or "", steps=steps)
+                return AgentResult(
+                    answer=resp.content or "",
+                    steps=steps,
+                )
 
             # Guardamos que el asistente pidio ejecutar herramientas.
             messages.append(
@@ -121,22 +124,60 @@ class MyAgent:
                     "content": resp.content or "",
                     "tool_calls": [
                         {
-                            "id": tool_call.id,
+                            "id": tc.id,
                             "function": {
-                                "name": tool_call.name,
-                                "arguments": tool_call.arguments,
+                                "name": tc.name,
+                                "arguments": tc.arguments,
                             },
                         }
-                        for tool_call in resp.tool_calls
+                        for tc in resp.tool_calls
                     ],
                 }
             )
 
             # Ejecutamos cada herramienta y agregamos su resultado al historial.
             for tool_call in resp.tool_calls:
-                args = json.loads(tool_call.arguments)
-                tool = self._tools[tool_call.name]
-                output = tool(**args)
+                # Herramienta desconocida: registrar error y continuar el bucle.
+                if tool_call.name not in self._tools:
+                    error_msg = f"Herramienta desconocida: {tool_call.name}"
+                    steps.append(
+                        AgentStep(
+                            tool_name=tool_call.name,
+                            tool_input=tool_call.arguments,
+                            tool_output=None,
+                            error=error_msg,
+                        )
+                    )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": error_msg,
+                        }
+                    )
+                    continue
+
+                try:
+                    args = json.loads(tool_call.arguments)
+                    output = self._tools[tool_call.name](**args)
+                except Exception as exc:
+                    error_msg = f"Error al ejecutar {tool_call.name}: {exc}"
+                    steps.append(
+                        AgentStep(
+                            tool_name=tool_call.name,
+                            tool_input=tool_call.arguments,
+                            tool_output=None,
+                            error=error_msg,
+                        )
+                    )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": error_msg,
+                        }
+                    )
+                    continue
 
                 steps.append(
                     AgentStep(
@@ -145,16 +186,6 @@ class MyAgent:
                         tool_output=output,
                     )
                 )
-
-                # Si la herramienta fallo, cortamos aca para no dejar que el LLM invente.
-                if output.startswith("Error:"):
-                    return AgentResult(answer=output, steps=steps, error=output)
-
-                # Para clima, usamos directamente la respuesta exacta de la API.
-                # Esto es por que el LLM, si bien usa la herramienta, a la hora de generar la respuesta final no la usaba
-                if tool_call.name == "current_temperature":
-                    return AgentResult(answer=output, steps=steps)
-
                 messages.append(
                     {
                         "role": "tool",
