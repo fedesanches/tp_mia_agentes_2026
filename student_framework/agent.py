@@ -134,26 +134,29 @@ class MyAgent:
 
             # Ejecutamos cada herramienta y agregamos su resultado al historial.
             for tool_call in resp.tool_calls:
-                args = json.loads(tool_call.arguments)
-                tool = self._tools[tool_call.name]
-                output = tool(**args)
+                try:
+                    args = json.loads(tool_call.arguments)
+                    tool = self._tools[tool_call.name]
+                    output = tool(**args)
+                    error = None
+                except KeyError:
+                    output = f"Error: herramienta desconocida '{tool_call.name}'"
+                    error = output
+                except json.JSONDecodeError:
+                    output = f"Error: argumentos JSON inválidos para '{tool_call.name}'"
+                    error = output
+                except Exception as e:
+                    output = f"Error: excepción al ejecutar '{tool_call.name}': {e}"
+                    error = output
 
                 steps.append(
                     AgentStep(
                         tool_name=tool_call.name,
                         tool_input=tool_call.arguments,
                         tool_output=output,
+                        error=error,
                     )
                 )
-
-                # Si la herramienta fallo, cortamos aca para no dejar que el LLM invente.
-                if output.startswith("Error:"):
-                    return AgentResult(answer=output, steps=steps, error=output)
-
-                # Para clima, usamos directamente la respuesta exacta de la API.
-                # Esto es por que el LLM, si bien usa la herramienta, a la hora de generar la respuesta final no la usaba
-                if tool_call.name == "current_temperature":
-                    return AgentResult(answer=output, steps=steps)
 
                 messages.append(
                     {
