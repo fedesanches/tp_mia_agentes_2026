@@ -106,13 +106,16 @@ class MyAgent:
         for _ in range(self._max_iterations):
             resp = self._llm.chat(
                 messages=messages,
-                tools=list(self._schemas.values()),
+                tools=list(self._schemas.values()) if self._schemas else None,
                 system=self._system,
             )
 
             # Si no hay herramientas para ejecutar, esta es la respuesta final.
             if not resp.tool_calls:
-                return AgentResult(answer=resp.content or "", steps=steps)
+                return AgentResult(
+                    answer=resp.content or "",
+                    steps=steps,
+                )
 
             # Guardamos que el asistente pidio ejecutar herramientas.
             messages.append(
@@ -121,13 +124,13 @@ class MyAgent:
                     "content": resp.content or "",
                     "tool_calls": [
                         {
-                            "id": tool_call.id,
+                            "id": tc.id,
                             "function": {
-                                "name": tool_call.name,
-                                "arguments": tool_call.arguments,
+                                "name": tc.name,
+                                "arguments": tc.arguments,
                             },
                         }
-                        for tool_call in resp.tool_calls
+                        for tc in resp.tool_calls
                     ],
                 }
             )
@@ -157,7 +160,6 @@ class MyAgent:
                         error=error,
                     )
                 )
-
                 messages.append(
                     {
                         "role": "tool",

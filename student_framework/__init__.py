@@ -17,7 +17,16 @@ from .agent import MyAgent
 
 
 def build_agent(config: dict[str, Any] | None = None) -> Agent:
-    """Construye y configura su agente."""
+    """Construye y configura su agente.
+
+    `config` es opcional. Si se proporciona `config["llm_client"]`, el
+    agente debe usarlo (así es como los tests de conformidad inyectan un
+    cliente mock). Si no, se construye a partir del entorno.
+
+    TODO (M1): instancien su agente y llamen a `agent.register_tool(...)`
+    por cada una de sus herramientas antes de devolverlo.
+    """
+    
     config = config or {}  # NO CAMBIAR
     llm = config.get("llm_client") or LLMClient.from_env()  # NO CAMBIAR
     kwargs: dict[str, Any] = {"llm_client": llm}  # NO CAMBIAR

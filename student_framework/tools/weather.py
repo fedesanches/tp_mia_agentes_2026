@@ -18,9 +18,13 @@ def _get_json(url: str) -> dict[str, Any]:
 
 
 def current_temperature(
-    city: Annotated[str, Field(description="Nombre de la ciudad.")],
+    city: Annotated[str, Field(description="Nombre de la ciudad en cualquier idioma (ej: 'Buenos Aires', 'Paris', 'Tokyo'). No incluir pais ni coordenadas.")],
 ) -> str:
-    """Devuelve la temperatura actual en grados Celsius para una ciudad."""
+    """
+    Obtiene la temperatura actual en grados Celsius para una ciudad. 
+    Usar siempre que el usuario pregunte por el clima, temperatura o condiciones meteorologicas actuales de una ciudad. 
+    No usar para datos historicos ni pronosticos futuros.
+    """
     geocoding_params = urlencode(
         {
             "name": city,
