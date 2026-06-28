@@ -146,6 +146,15 @@ class MyAgent:
                     )
                 )
 
+                # Si la herramienta fallo, cortamos aca para no dejar que el LLM invente.
+                if output.startswith("Error:"):
+                    return AgentResult(answer=output, steps=steps, error=output)
+
+                # Para clima, usamos directamente la respuesta exacta de la API.
+                # Esto es por que el LLM, si bien usa la herramienta, a la hora de generar la respuesta final no la usaba
+                if tool_call.name == "current_temperature":
+                    return AgentResult(answer=output, steps=steps)
+
                 messages.append(
                     {
                         "role": "tool",
@@ -188,4 +197,9 @@ class MyAgent:
         El M1 deja esto como stub; los tests de M2 verifican el contrato.
         """
         raise NotImplementedError("M2: implementa salida estructurada con reparación")
+
+
+
+
+
 
