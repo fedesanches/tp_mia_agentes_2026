@@ -137,53 +137,27 @@ class MyAgent:
 
             # Ejecutamos cada herramienta y agregamos su resultado al historial.
             for tool_call in resp.tool_calls:
-                # Herramienta desconocida: registrar error y continuar el bucle.
-                if tool_call.name not in self._tools:
-                    error_msg = f"Herramienta desconocida: {tool_call.name}"
-                    steps.append(
-                        AgentStep(
-                            tool_name=tool_call.name,
-                            tool_input=tool_call.arguments,
-                            tool_output=None,
-                            error=error_msg,
-                        )
-                    )
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": error_msg,
-                        }
-                    )
-                    continue
-
                 try:
                     args = json.loads(tool_call.arguments)
-                    output = self._tools[tool_call.name](**args)
-                except Exception as exc:
-                    error_msg = f"Error al ejecutar {tool_call.name}: {exc}"
-                    steps.append(
-                        AgentStep(
-                            tool_name=tool_call.name,
-                            tool_input=tool_call.arguments,
-                            tool_output=None,
-                            error=error_msg,
-                        )
-                    )
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": error_msg,
-                        }
-                    )
-                    continue
+                    tool = self._tools[tool_call.name]
+                    output = tool(**args)
+                    error = None
+                except KeyError:
+                    output = f"Error: herramienta desconocida '{tool_call.name}'"
+                    error = output
+                except json.JSONDecodeError:
+                    output = f"Error: argumentos JSON inválidos para '{tool_call.name}'"
+                    error = output
+                except Exception as e:
+                    output = f"Error: excepción al ejecutar '{tool_call.name}': {e}"
+                    error = output
 
                 steps.append(
                     AgentStep(
                         tool_name=tool_call.name,
                         tool_input=tool_call.arguments,
                         tool_output=output,
+                        error=error,
                     )
                 )
                 messages.append(
