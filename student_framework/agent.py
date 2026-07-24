@@ -55,6 +55,8 @@ class MyAgent:
         self._schemas: dict[str, ToolSchema] = {}
         
         # TODO (M2): inicializa la estructura de historial conversacional.
+        self._history: list[dict[str, Any]] = []
+        self._last_user_index: int = -1  # Índice del último mensaje de usuario en el historial.
 
     def register_tool(
         self,
@@ -99,26 +101,27 @@ class MyAgent:
         `LLMResponse` y exponlos en `AgentResult.input_tokens` /
         `AgentResult.output_tokens`.
         """
-        
-        messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
+        self._history.append({"role": "user", "content": user_message})
+        self._last_user_index = len(self._history) - 1
         steps: list[AgentStep] = []
 
         for _ in range(self._max_iterations):
             resp = self._llm.chat(
-                messages=messages,
+                messages=self._windowed_history(),
                 tools=list(self._schemas.values()) if self._schemas else None,
                 system=self._system,
             )
 
             # Si no hay herramientas para ejecutar, esta es la respuesta final.
             if not resp.tool_calls:
+                self._history.append({"role": "assistant", "content": resp.content or ""})
                 return AgentResult(
                     answer=resp.content or "",
                     steps=steps,
                 )
 
             # Guardamos que el asistente pidio ejecutar herramientas.
-            messages.append(
+            self._history.append(
                 {
                     "role": "assistant",
                     "content": resp.content or "",
@@ -160,7 +163,7 @@ class MyAgent:
                         error=error,
                     )
                 )
-                messages.append(
+                self._history.append(
                     {
                         "role": "tool",
                         "tool_call_id": tool_call.id,
@@ -173,6 +176,28 @@ class MyAgent:
             steps=steps,
             error="Se alcanzo el limite de iteraciones sin respuesta final.",
         )
+
+    def _windowed_history(self) -> list[dict[str, Any]]:
+        """Recorta self._history a cuando mucho, a max_history_messages. Sin
+        descartar nunca el último mensaje de usuario que siempre debe estar presente en la ventana de 
+        mensajes enviados al LLM."""
+        budget = self._max_history_messages
+        history = self._history
+
+        if len(history) <= budget:
+            return list(history)
+
+        window_start = len(history) - budget
+        if self._last_user_index >= window_start:
+            # el mensaje de usuario ya cae dentro de la ventana de cola
+            return list(history[window_start:])
+
+        # liberamos el espacio del extremo más viejo de la ventana
+        last_user_message = history[self._last_user_index]
+        remaining = budget - 1
+        tail = history[-remaining:] if remaining > 0 else []
+        
+        return [last_user_message, *tail]
         
     def structured_call(
         self,
