@@ -12,11 +12,13 @@ Los tests de conformidad en `tests/conformance/test_m1.py` y
 from __future__ import annotations
 
 import json
+from pyexpat.errors import messages
 from typing import Any, Callable
 
 from mia_agents.protocols import LLMClient
 from mia_agents.types import AgentResult, AgentStep, ToolSchema
-
+from mia_agents import final_result_tool_schema, FINAL_RESULT_TOOL_NAME
+from pydantic import ValidationError, schema
 
 class MyAgent:
     def __init__(
@@ -226,10 +228,53 @@ class MyAgent:
 
         El M1 deja esto como stub; los tests de M2 verifican el contrato.
         """
-        raise NotImplementedError("M2: implementa salida estructurada con reparación")
+        final_tool = final_result_tool_schema(schema)
+        messages: list[dict[str, Any]] = [
+            {"role": "user", "content": prompt},
+        ]
 
+        for attempt in range(max_repair_attempts + 1):
+            resp = self._llm.chat(
+                messages=messages,
+                tools=[final_tool],
+                system=self._system,
+            )
+            
+            final_call = next(
+                (tc for tc in resp.tool_calls if tc.name == FINAL_RESULT_TOOL_NAME), 
+                None
+            )
 
+            if final_call is None:
+                messages.append({"role": "assistant", "content": resp.content or ""})
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        f"Debes invocar la herramienta '{FINAL_RESULT_TOOL_NAME}' "
+                        "con los argumentos requeridos. No respondas con texto libre. Intenta de nuevo."
+                    ),
+                })
+                continue
 
+            try:
+                args = json.loads(final_call.arguments)
+                return schema.model_validate(args)
+            except (json.JSONDecodeError, ValidationError) as e:
+                messages.append({
+                    "role": "assistant",
+                    "content": resp.content or "",
+                    "tool_calls": [{
+                        "id": final_call.id,
+                        "function": {"name": final_call.name, "arguments": final_call.arguments},
+                    }],
+                })
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": final_call.id,
+                    "content": f"Error de validación: {e}. Corregí los argumentos y volvé a invocar '{FINAL_RESULT_TOOL_NAME}'.",
+            })
+            continue
 
-
-
+        raise RuntimeError(
+            f"No se pudo obtener una respuesta válida de '{FINAL_RESULT_TOOL_NAME}' tras {max_repair_attempts} intentos."
+        )
