@@ -107,6 +107,10 @@ class MyAgent:
         self._last_user_index = len(self._history) - 1
         steps: list[AgentStep] = []
 
+        # Acumuladores de tokens para esta llamada a run().
+        input_tokens: int | None = None
+        output_tokens: int | None = None
+
         for _ in range(self._max_iterations):
             resp = self._llm.chat(
                 messages=self._windowed_history(),
@@ -114,12 +118,19 @@ class MyAgent:
                 system=self._system,
             )
 
+            if resp.input_tokens is not None:
+                input_tokens = (input_tokens or 0) + resp.input_tokens
+            if resp.output_tokens is not None:
+                output_tokens = (output_tokens or 0) + resp.output_tokens
+
             # Si no hay herramientas para ejecutar, esta es la respuesta final.
             if not resp.tool_calls:
                 self._history.append({"role": "assistant", "content": resp.content or ""})
                 return AgentResult(
                     answer=resp.content or "",
                     steps=steps,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
                 )
 
             # Guardamos que el asistente pidio ejecutar herramientas.
@@ -177,6 +188,8 @@ class MyAgent:
             answer="",
             steps=steps,
             error="Se alcanzo el limite de iteraciones sin respuesta final.",
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     def _windowed_history(self) -> list[dict[str, Any]]:
