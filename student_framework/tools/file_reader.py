@@ -29,7 +29,7 @@ def _list_files(directory: str) -> list[str]:
 
 
 def file_reader(
-    path: Annotated[str, Field(description="Ruta al archivo de texto a leer. Se admite una ruta relativa dentro del proyecto (sin '..') o una ruta absoluta a un archivo de texto existente.")],
+    path: Annotated[str, Field(description="Ruta relativa dentro del proyecto a un archivo de texto (sin '..'), por ejemplo 'datos/notas.txt'. No se admiten rutas absolutas.")],
 ) -> str:
     """
     Lee el contenido de un archivo de texto UTF-8.
@@ -56,25 +56,27 @@ def file_reader(
 
     root = _sandbox_root()
 
-    # 3. Resolución de la ruta. Las relativas se anclan al sandbox; las
-    #    absolutas se permiten como rutas seguras hacia archivos existentes.
+    # 3. Rutas absolutas: rechazadas. Las relativas se anclan al sandbox.
     if os.path.isabs(raw):
-        resolved = os.path.realpath(raw)
-    else:
-        resolved = os.path.realpath(os.path.join(root, raw))
-        # Defensa extra ante symlinks u otras formas de escape del sandbox.
-        try:
-            if os.path.commonpath([root, resolved]) != root:
-                return (
-                    f"Error: la ruta {raw!r} escapa del directorio permitido "
-                    f"({root}). Usa una ruta relativa dentro del proyecto, por "
-                    "ejemplo 'datos/notas.txt'."
-                )
-        except ValueError:
+        return (
+            f"Error: la ruta {raw!r} es una ruta absoluta, lo cual no esta "
+            f"permitido. Usa una ruta relativa dentro del proyecto ({root}), "
+            "por ejemplo 'datos/notas.txt'."
+        )
+
+    resolved = os.path.realpath(os.path.join(root, raw))
+    try:
+        if os.path.commonpath([root, resolved]) != root:
             return (
                 f"Error: la ruta {raw!r} escapa del directorio permitido "
-                f"({root}). Usa una ruta relativa dentro del proyecto."
+                f"({root}). Usa una ruta relativa dentro del proyecto, por "
+                "ejemplo 'datos/notas.txt'."
             )
+    except ValueError:
+        return (
+            f"Error: la ruta {raw!r} escapa del directorio permitido "
+            f"({root}). Usa una ruta relativa dentro del proyecto."
+        )
 
     # 4. Inexistencia: si el directorio contenedor existe, listamos sus
     #    archivos para que se pueda elegir la ruta correcta.

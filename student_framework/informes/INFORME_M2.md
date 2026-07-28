@@ -178,8 +178,10 @@ reintenta `calculator(23, 17, "*")`, obteniendo `391.0`.
 ### 3.2. Lector de archivos (`student_framework/tools/file_reader.py`)
 
 El lector define un **sandbox** cuya raíz es el directorio del proyecto
-(`cwd`). Las rutas relativas se anclan a esa raíz; las rutas absolutas se
-permiten como "rutas seguras" hacia archivos existentes.
+(`cwd`). Solo se aceptan rutas relativas ancladas a esa raíz; las rutas
+absolutas se rechazan explícitamente, para que el lector no pueda usarse
+para acceder a archivos fuera del proyecto.
+
 
 | Error recuperable | Información que devuelve al LLM |
 | --- | --- |
@@ -191,6 +193,8 @@ permiten como "rutas seguras" hacia archivos existentes.
 | Extensión no permitida | La extensión recibida y la lista de extensiones válidas. |
 | Archivo demasiado grande | Que superó el tope de tamaño (`_MAX_BYTES`). |
 | Archivo no UTF-8 | Que no es texto UTF-8 válido; solo se leen archivos de texto. |
+| Ruta absoluta | Que las rutas absolutas no están permitidas y debe usar una ruta relativa dentro del proyecto, por ejemplo `'datos/notas.txt'`. |
+
 
 Orden de validación (de más barato/estructural a más costoso): ruta vacía →
 `..` → escape del sandbox → inexistencia → directorio → extensión → lectura
@@ -212,4 +216,99 @@ El LLM ve el nombre correcto en la lista y reintenta
 
 ## 4. Modos de fallo dentro / fuera de alcance
 
-_Pendiente de completar a medida que se cierren las historias._
+### Dentro de alcance
+
+- **Memoria conversacional:** pérdida de contexto antiguo por la ventana
+  deslizante (se prioriza recencia sobre completitud); el agente no se
+  rompe ni pierde el turno actual del usuario, incluso en conversaciones
+  de decenas de turnos con mensajes grandes.
+- **Salida estructurada:** argumentos inválidos contra el schema Pydantic,
+  y el caso en que el modelo responde con texto libre en vez de invocar
+  `final_result` — ambos se reparan con reintentos acotados
+  (`max_repair_attempts`), y si se agotan, se levanta una excepción
+  explícita en lugar de devolver `None` o un resultado parcial.
+- **Errores de argumentos en herramientas:** operandos no numéricos,
+  operador inválido, división/módulo por cero (calculadora); rutas
+  vacías, con `..`, absolutas, que escapan del sandbox, inexistentes,
+  que apuntan a un directorio, con extensión no permitida, demasiado
+  grandes o no UTF-8 (lector de archivos). En todos los casos la
+  herramienta devuelve un mensaje accionable en vez de lanzar una
+  excepción, para que el LLM pueda corregir y reintentar.
+- **Fallos transitorios de infraestructura:** timeouts, errores de
+  conexión y errores de red (`TimeoutError`, `ConnectionError`,
+  `URLError`/`HTTPError`) tanto en las llamadas al cliente LLM (en `run`
+  y en `structured_call`) como en la ejecución de herramientas con I/O
+  real (`current_temperature`). Se reintentan hasta 3 veces; el resto de
+  las excepciones se propaga sin reintentar.
+- **Herramienta desconocida o argumentos JSON inválidos** (heredado de
+  M1): el agente no se rompe, registra el fallo como `AgentStep` con
+  `error` no nulo.
+
+### Fuera de alcance (deliberadamente)
+
+- **Backoff entre reintentos:** tanto en `_call_with_retries` como en la
+  reparación de `structured_call`, los reintentos son inmediatos, sin
+  espera progresiva. Se prioriza mantener los tests deterministas y
+  rápidos por sobre simular un comportamiento de producción más realista.
+- **Detección de rate limiting específica por proveedor:** no se
+  interpretan headers como `Retry-After` ni códigos de error propios de
+  Bedrock/Ollama — solo se reconocen tipos de excepción genéricos de
+  Python (`TimeoutError`, `ConnectionError`, `URLError`). Un error 429 o
+  5xx real de un proveedor que no se traduzca a uno de estos tipos no se
+  reintentaría.
+- **Estrategias de memoria alternativas a sliding window**
+  (*summarization*, *offload/retrieve*): se consideraron pero no se
+  implementaron; se optó por la estrategia obligatoria del enunciado por
+  simplicidad y por ser suficiente para los escenarios evaluados.
+- **Persistencia de `self._history` entre procesos:** la memoria vive
+  solo en la instancia de `MyAgent` en memoria; se pierde si se recrea el
+  agente (por ejemplo, entre invocaciones separadas de la CLI).
+- **Alucinaciones del LLM no relacionadas con el formato:** por ejemplo,
+  que el modelo decida no usar una herramienta disponible cuando sí
+  correspondía (ya observado con la calculadora en pruebas manuales) — no
+  es un fallo que el framework pueda detectar ni corregir, al ser una
+  decisión del modelo y no un error de formato o de infraestructura.
+
+## 5. Evidencia de ejecución de tests
+
+Los 19 tests pasan: 12 de conformidad (`tests/conformance/test_m1.py` +
+`test_m2.py`) y 7 propios (`tests/student/`).
+
+![Tests passing](../../assets/tests_m2.png)
+
+### Tests de conformidad (`tests/conformance/test_m1.py` + `test_m2.py`)
+
+Provistos por la cátedra. Verifican el contrato público del agente de forma
+automática inyectando un `MockLLMClient`, sin depender de ningún proveedor
+real. No fueron modificados.
+
+| Test | Qué verifica |
+|---|---|
+| `test_build_agent_factory_exists` | `build_agent` existe y devuelve un objeto `Agent` |
+| `test_run_returns_agent_result` | `run()` siempre devuelve un `AgentResult` |
+| `test_no_tool_no_loop` | si el LLM responde sin `tool_calls`, el agente termina en una sola llamada |
+| `test_register_tool_signature` | `register_tool` acepta la firma `(callable, ToolSchema)` |
+| `test_tool_is_executed_when_called` | cuando el LLM emite un `tool_call`, el callable se ejecuta y el resultado se realimenta |
+| `test_agent_is_stateful_across_runs` | llamadas sucesivas a `run` sobre la misma instancia continúan la misma conversación |
+| `test_bounded_history_growth` | ninguna llamada a `chat(...)` supera `max_history_messages`, sin importar cuántos turnos lleve la conversación |
+| `test_structured_call_offers_final_result_tool` | la primera llamada de `structured_call` ofrece la tool `final_result` |
+| `test_structured_output_max_retries` | agotados los reintentos de reparación, se levanta una excepción (nunca `None` ni un valor parcial) |
+| `test_structured_output_repairs_schema_validation_error` | argumentos inválidos contra el schema se reparan y `structured_call` devuelve la instancia validada |
+| `test_token_accounting` | `AgentResult.input_tokens`/`output_tokens` suman lo reportado por el LLM a lo largo de `run` |
+| `test_token_accounting_treats_missing_values_as_zero_after_first_report` | una vez que hay tokens reportados, las respuestas sin tokens cuentan como 0 |
+
+### Tests propios (`tests/student/test_tools_m1.py` + `test_retry_m2.py`)
+
+Escritos por el grupo para verificar escenarios específicos del bucle,
+casos límite, y resiliencia ante fallos transitorios (sin test de
+conformidad provisto para este último caso).
+
+| Test | Qué verifica |
+|---|---|
+| `test_encadenar_dos_herramientas` | el agente ejecuta dos herramientas en secuencia (`file_reader` → `calculator`) dentro de un mismo `run`, registrando un paso por cada una |
+| `test_cortar_por_max_iteraciones` | si el LLM nunca deja de pedir herramientas, el agente corta exactamente al llegar a `max_iterations` (10) y devuelve un `AgentResult` válido |
+| `test_invocar_herramienta_desconocida_sin_romper` | si el LLM alucina un nombre de herramienta inexistente, `run` no lanza excepción y registra el error en el `AgentStep` |
+| `test_usar_argumentos_json_invalidos_sin_romper` | si el LLM genera argumentos que no son JSON válido, `run` no lanza excepción y registra el error en el `AgentStep` |
+| `test_respuesta_final_proviene_del_llm` | tras ejecutar una herramienta, el agente continúa el bucle y `result.answer` es el texto que devuelve el LLM, no el output de la tool |
+| `test_reintenta_ante_fallo_transitorio_del_llm` | un `TimeoutError` simulado en el cliente LLM se reintenta y `run` termina con éxito |
+| `test_no_reintenta_ante_error_no_transitorio` | un error no transitorio (`ValueError`) se propaga sin reintentar |

@@ -165,7 +165,9 @@ class MyAgent:
                 try:
                     args = json.loads(tool_call.arguments)
                     tool = self._tools[tool_call.name]
-                    output = tool(**args)
+
+                    # Ejecutamos la herramienta con reintentos en caso de errores transitorios.
+                    output = self._call_with_retries(lambda: tool(**args))
                     error = None
                 except KeyError:
                     output = f"Error: herramienta desconocida '{tool_call.name}'"
@@ -272,11 +274,16 @@ class MyAgent:
         ]
 
         for attempt in range(max_repair_attempts + 1):
-            resp = self._llm.chat(
-                messages=messages,
-                tools=[final_tool],
-                system=self._system,
+            # Llamamos al LLM con la historia de mensajes y la herramienta final_result.
+            # Hacemos la llamada dentro de `_call_with_retries` para manejar errores transitorios.
+            resp = self._call_with_retries(
+                lambda: self._llm.chat(
+                    messages=messages,
+                    tools=[final_tool],
+                    system=self._system,
+                )
             )
+
             
             final_call = next(
                 (tc for tc in resp.tool_calls if tc.name == FINAL_RESULT_TOOL_NAME), 
