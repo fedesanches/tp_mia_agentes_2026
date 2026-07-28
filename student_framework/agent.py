@@ -14,11 +14,16 @@ from __future__ import annotations
 import json
 from pyexpat.errors import messages
 from typing import Any, Callable
+from urllib.error import URLError
 
 from mia_agents.protocols import LLMClient
 from mia_agents.types import AgentResult, AgentStep, ToolSchema
 from mia_agents import final_result_tool_schema, FINAL_RESULT_TOOL_NAME
 from pydantic import ValidationError, schema
+
+# Acá definimos una lista de errores que vamos a considerar transitorios. Es decir
+# que si son detectatos, el agente puede reintentar la ejecución de acción que los provoca.
+_TRANSIENT_ERRORS = (TimeoutError, ConnectionError, URLError)
 
 class MyAgent:
     def __init__(
@@ -112,10 +117,14 @@ class MyAgent:
         output_tokens: int | None = None
 
         for _ in range(self._max_iterations):
-            resp = self._llm.chat(
-                messages=self._windowed_history(),
-                tools=list(self._schemas.values()) if self._schemas else None,
-                system=self._system,
+            # Llamamos al LLM con la historia de mensajes y las herramientas registradas.
+            # Hacemos la llamada dentro de `_call_with_retries` para manejar errores transitorios.
+            resp = self._call_with_retries(
+                lambda: self._llm.chat(
+                    messages=self._windowed_history(),
+                    tools=list(self._schemas.values()) if self._schemas else None,
+                    system=self._system,
+                )
             )
 
             if resp.input_tokens is not None:
@@ -213,6 +222,22 @@ class MyAgent:
         tail = history[-remaining:] if remaining > 0 else []
         
         return [last_user_message, *tail]
+
+    def _call_with_retries(self, fn, max_attempts: int = 3):
+        """
+        Llama a `fn` hasta `max_attempts` veces si se detecta un error transitorio.
+        - Si `fn` lanza un error que no está en `_TRANSIENT_ERRORS`, se propaga inmediatamente.
+        - Si `fn` lanza un error transitorio, se reintenta hasta `max_attempts` veces.
+        - Si tras `max_attempts` sigue fallando, se propaga la última excepción.
+        """
+        last_exc: Exception | None = None
+        for _ in range(max_attempts):
+            try:
+                return fn()
+            except _TRANSIENT_ERRORS as e:
+                last_exc = e
+                continue
+        raise last_exc
         
     def structured_call(
         self,
