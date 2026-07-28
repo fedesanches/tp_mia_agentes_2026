@@ -25,22 +25,24 @@ from mia_agents.types import AgentResult, LLMResponse, ToolCall
 from student_framework import build_agent
 
 
-def test_encadenar_dos_herramientas(tmp_path):
+def test_encadenar_dos_herramientas(tmp_path, monkeypatch):
     """
     El LLM llama a file_reader y luego a calculator, y el resultado final
     proviene del texto del LLM.
     Parametros:
         - tmp_path: pytest fixture que provee un directorio temporal para crear archivos. 
+        - monkeypatch: pytest fixture para modificaciones temporales.
     """
 
     archivo = tmp_path / "numero.txt"
     archivo.write_text("21", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)  # el sandbox de file_reader es os.getcwd()
 
     # Creamos un LLM que primero llama a file_reader, luego a calculator, y finalmente devuelve un texto.
     mock = MockLLMClient([
         LLMResponse(content=None, tool_calls=[
             ToolCall(id="c1", name="file_reader",
-                     arguments=json.dumps({"path": str(archivo)}))]),
+                     arguments=json.dumps({"path": archivo.name}))]),  # ruta relativa
         LLMResponse(content=None, tool_calls=[
             ToolCall(id="c2", name="calculator",
                      arguments=json.dumps({"left_operand": 21, "right_operand": 2, "operator": "*"}))]),
