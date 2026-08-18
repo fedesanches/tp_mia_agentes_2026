@@ -1,0 +1,41 @@
+{
+  "id": "study-with-key",
+  "difficulty": "easy",
+  "description": "Un estudio con una llave dorada bajo la alfombra y una puerta cerrada.",
+  "user_message": "Te despiertas encerrado en un pequeño estudio. La puerta está cerrada. Encuentra la forma de salir. Usa las herramientas que tienes disponibles para explorar la sala y resolver el puzzle.",
+  "start_room": "estudio",
+  "rooms": {
+    "estudio": {
+      "name": "Estudio",
+      "description": "Un estudio pequeño forrado de libros. Una alfombra persa cubre el centro del suelo. A un lado hay un escritorio de roble. Al fondo, la puerta principal.",
+      "items": ["alfombra", "escritorio", "puerta_principal"]
+    }
+  },
+  "items": {
+    "alfombra": {
+      "name": "alfombra",
+      "description": "Una vieja alfombra persa. Algo abulta debajo.",
+      "container": true,
+      "contains": ["llave_oro"]
+    },
+    "llave_oro": {
+      "name": "llave dorada",
+      "description": "Una llave dorada, pesada al tacto.",
+      "takeable": true,
+      "hidden_by": "alfombra"
+    },
+    "escritorio": {
+      "name": "escritorio",
+      "description": "Un escritorio de roble con dos cajones. Ambos están abiertos y vacíos.",
+      "container": true,
+      "contains": []
+    },
+    "puerta_principal": {
+      "name": "puerta principal",
+      "description": "Una puerta robusta de roble. La cerradura es dorada y parece reciente.",
+      "locked": { "requires_item": "llave_oro" },
+      "open_state": "closed"
+    }
+  },
+  "goal": { "type": "item_open", "item": "puerta_principal" }
+}

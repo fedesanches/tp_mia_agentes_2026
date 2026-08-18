@@ -1,0 +1,106 @@
+{
+  "id": "library-search",
+  "difficulty": "hard",
+  "description": "Una biblioteca con ocho libros en una estantería alta. Uno de ellos guarda la llave de la caja fuerte; la caja, a su vez, contiene la llave grabada que abre la puerta. Los demás libros son prosa larga e inútil.",
+  "user_message": "Te despiertas en la biblioteca del archivero. La puerta principal está cerrada con una cerradura grabada. En la pared opuesta hay una caja fuerte empotrada, también cerrada. Una estantería alta ocupa la pared norte con ocho volúmenes encuadernados de forma parecida. Hay también un viejo escritorio en el centro. Encuentra la forma de salir.",
+  "start_room": "biblioteca",
+  "rooms": {
+    "biblioteca": {
+      "name": "Biblioteca del archivero",
+      "description": "Una sala rectangular con olor a papel viejo. Al norte, una estantería alta de roble cargada de libros antiguos. En el centro, un escritorio robusto con un cajón único, vacío al primer vistazo. En la pared oeste, empotrada en el muro, una caja fuerte de hierro con bisagras macizas y un disco de combinación que en realidad oculta una cerradura convencional. Enfrente, la puerta principal, de hierro negro, con la cerradura grabada de símbolos.",
+      "items": ["escritorio", "estanteria_alta", "caja_fuerte", "puerta_principal"]
+    }
+  },
+  "items": {
+    "escritorio": {
+      "name": "escritorio",
+      "description": "Un escritorio de roble con un único cajón estrecho. Lo abres y lo encuentras vacío salvo por restos de polvo y una pluma rota.",
+      "container": true,
+      "contains": []
+    },
+    "estanteria_alta": {
+      "name": "estantería alta",
+      "description": "Una estantería de roble de cuatro baldas. Solo la balda superior tiene libros — ocho volúmenes encuadernados con materiales distintos pero de tamaño parecido. Las baldas inferiores están vacías.",
+      "container": true,
+      "contains": [
+        "libro_geometria",
+        "libro_alquimia",
+        "libro_filosofia",
+        "libro_historia",
+        "libro_jurisprudencia",
+        "libro_recetario",
+        "libro_genealogia",
+        "libro_sermones"
+      ]
+    },
+    "libro_geometria": {
+      "name": "Elementos de geometría aplicada",
+      "description": "Encuadernación rígida de cartón forrado en tela negra, lomo reforzado. Proposición XVII (página 84): 'En todo triángulo, si se prolongan dos de sus lados hasta cortarse en un punto exterior, los ángulos así formados son iguales a los ángulos opuestos por el vértice del triángulo original.' La demostración ocupa página y media y se apoya en las proposiciones IV, IX y XII. El autor — Tomás del Riego, ingeniero militar — añade en nota al pie que esta proposición le ahorró tres días de cálculo en el trazado del fuerte de San Marcos, en el año 1721, y recomienda al lector aplicarla con prudencia cuando la regla no alcance. El resto del capítulo desarrolla seis problemas resueltos sobre triángulos semejantes, cuadrados inscritos en círculos y trazado de polígonos regulares de cinco, seis y ocho lados. Las figuras están grabadas en cobre y aparecen al pie de cada problema, con líneas de construcción discontinuas y letras latinas para los vértices.",
+      "hidden_by": "estanteria_alta"
+    },
+    "libro_alquimia": {
+      "name": "Notas sobre la transmutación de los metales",
+      "description": "Manuscrito en cuarto, encuadernación de cuero rojo desgastado, sin nombre de autor. Folio 23 verso: 'Operación segunda: tomadas las virutas de plomo del peso de una onza y tres adarmes, póngase en crisol de arcilla refractaria, cúbrase con sal de tártaro y cal viva en partes iguales, y caliéntese al rojo cereza durante doce horas seguidas sin dejar enfriar el fuelle. Apartado del fuego, déjese reposar el crisol hasta la mañana siguiente. Al romperlo se hallará una masa vidriosa en cuya superficie aparecerán glóbulos del metal del sol; recójanse con espátula de cuerno, no de metal vulgar. Sucede a veces, no diré con qué frecuencia, que la operación produzca solo una escoria gris y maloliente; en tal caso conviene revisar la pureza de la cal y la quietud del firmamento.' El folio siguiente lleva una receta similar para la cal de mercurio. Hay marcas de quemaduras en los márgenes y manchas oscuras que el lector cuidadoso reconocerá como hierro oxidado.",
+      "hidden_by": "estanteria_alta"
+    },
+    "libro_filosofia": {
+      "name": "Diálogos sobre la naturaleza del juicio",
+      "description": "Volumen de pequeño tamaño, encuadernado en piel verde con cantos dorados. Diálogo tercero, entre Macario y Filón: '— Dime, Filón: cuando juzgas a tu vecino, ¿le pesas con la misma balanza con que te pesas a ti mismo? — A veces, Macario; pero he advertido que la balanza pierde fiel cuando se mira de cerca. — Es decir, que cuanto más te conoces, menos riguroso eres contigo. — Más bien lo contrario: cuanto más me conozco, más comprendo por qué fallo, y eso me hace indulgente conmigo y a veces injusto con los demás. — De suerte que la indulgencia y la injusticia nacen de la misma raíz. — Eso parece. — Concluyamos entonces que el juicio sano no nace de conocerse, sino de olvidarse: solo el juez que ha dejado fuera de la sala su propio caso puede pesar limpio.' El diálogo prosigue durante diez páginas más, sin que ninguno de los dos consienta del todo en la conclusión del otro. El autor — un canónigo de Salamanca — anota al margen: 'tampoco yo estoy seguro'.",
+      "hidden_by": "estanteria_alta"
+    },
+    "libro_historia": {
+      "name": "Anales del reino, década quinta",
+      "description": "Tomo en folio, encuadernación de pergamino crudo, con cintas de cierre. Año 1437, entrada de mayo: 'Llegó al puerto de Santander, en la víspera de san Pedro, una flota de tres naves procedentes de Flandes con cargamento de paño teñido, ámbar y libros impresos. La corona compró el ámbar por mil quinientos maravedís, y el paño quedó para el infante don Sancho. Los libros, traducidos por un fraile de Burgos, se enviaron a la biblioteca real. Las naves regresaron con plata mexicana y aceite andaluz.' Junio: 'Hubo plaga de langosta en los campos de Tierra de Campos, perdiéndose dos tercios de la cosecha. La corona dispensó del diezmo a las parroquias afectadas.' Julio: 'El conde de Treviño murió de fiebres, sin heredero legítimo, y sus posesiones revirtieron a la corona tras un pleito que duró seis meses.' Las entradas continúan así, mes por mes, hasta el año 1442. Los márgenes están salpicados de números: probables totales presupuestarios anotados por algún funcionario.",
+      "hidden_by": "estanteria_alta"
+    },
+    "libro_jurisprudencia": {
+      "name": "Recopilación de sentencias del tribunal supremo",
+      "description": "Tomo grueso encuadernado en piel parda, con el escudo real estampado en seco en la cubierta. Sentencia 412 del año 1798: 'En la causa seguida contra Juan Espinosa, vecino de Trujillo, por presunta apropiación indebida de aguas de regadío comunal, vista la prueba documental y testimonial aportada por ambas partes, este tribunal falla: el demandado deberá restituir a la comunidad de regantes la cantidad de tres cargas de cebada equivalentes al daño estimado, abonará costas, y se le impone censura pública en plaza por hábito reiterado de prácticas similares. No procede pena de cárcel por carecer el reo de antecedentes formales. Notifíquese a la autoridad municipal correspondiente.' Las sentencias siguientes versan sobre lindes de fincas, herencias mal repartidas y cobros de censos vencidos. El estilo es severo y conciso; las decisiones tienden a buscar la restitución antes que el castigo. Al final del tomo, un índice ordena los casos por materia: aguas, lindes, herencias, mercados, contratos.",
+      "hidden_by": "estanteria_alta"
+    },
+    "libro_recetario": {
+      "name": "Recetario del cocinero mayor",
+      "description": "Manuscrito en cuarto, tapas blandas de pergamino, manchado de aceite. Receta del capón en pepitoria, página 47: 'Tómese un capón joven, bien limpio y troceado, y póngase a dorar en cazuela de barro con manteca de cerdo y un poco de tocino. Cuando esté tomado por todos lados, añádase una cabeza de ajos picada, un puñado de almendras tostadas y machacadas, una cucharada de harina y un vaso del mejor vino blanco que se tenga. Déjese reducir un cuarto de hora a fuego mediano; añádanse después dos huevos cocidos, picado fino el blanco y reservada la yema. Cúbrase con caldo de gallina hasta que el capón quede sumergido, y cuézase a fuego lento durante hora y media. Al final, deslíase la yema de huevo en un poco de la salsa y añádase a la cazuela fuera del fuego, removiendo bien para que ligue. Espolvoréese perejil picado y sírvase muy caliente.' Las páginas siguientes detallan recetas de pichones, conejo, ternera estofada y un curioso pastel de hojaldre con manzana.",
+      "hidden_by": "estanteria_alta"
+    },
+    "libro_genealogia": {
+      "name": "Genealogía de la casa de Andrade",
+      "description": "Tomo grande encuadernado en piel azul, con grabados heráldicos en el lomo. Capítulo I — Origen y primera generación: 'Pero Domínguez de Andrade, llamado el Calvo por su temprana pérdida de cabello, fundó la casa en el año 1284 al recibir de don Sancho IV las tierras de Andrade en Tierra de Lemos, en pago por sus servicios en la frontera de Granada. Casó en primeras nupcias con doña Mencía Rodríguez, de la cual tuvo tres hijos: Fernán, Diego y Teresa. Enviudó en 1297 y casó de nuevo con doña Aldonza Pérez de Sarria, sin sucesión. Murió en 1312 de heridas mal cicatrizadas tras una caída de caballo.' El árbol genealógico ocupa una página plegada y baja hasta finales del siglo XVIII, con doce ramas principales y numerosas colaterales. Los nombres se repiten: Fernán, Sancho, Pero, Teresa, Mencía. Las anotaciones marginales indican fechas de nacimiento, casamientos, defunciones y, en algunos casos, una breve nota sobre el oficio o las circunstancias del fin.",
+      "hidden_by": "estanteria_alta"
+    },
+    "libro_sermones": {
+      "name": "Colección de sermones dominicales",
+      "description": "Tomo encuadernado en piel negra con cantos rojos, muy usado. Sermón XXI, para el cuarto domingo de cuaresma: 'Mis hermanos, no es la enmienda lo que se nos pide, sino el principio de la enmienda; no la perfección, sino el ánimo de empezar. Cristo no espera al santo en el umbral de la iglesia: espera al pecador que se acerca. Si esto entendemos, lo demás vendrá; si esto no lo entendemos, ni con cuarenta días de ayuno ni con cuarenta noches en vela conseguiremos avanzar un palmo. La vida cristiana no es un palacio que uno construye desde fuera, piedra a piedra hasta dejarlo perfecto; es una casa heredada, que conviene barrer todos los días y reparar cuando algo se rompe.' El predicador — Fray Diego Méndez, dominico — repite la misma estructura en los sermones siguientes: una imagen sencilla, una insistencia, una invitación. El tomo está marcado en docenas de páginas con cintas de seda descoloridas; los márgenes llevan anotaciones de un párroco posterior.",
+      "container": true,
+      "contains": ["llave_caja"],
+      "hidden_by": "estanteria_alta"
+    },
+    "llave_caja": {
+      "name": "llave de la caja",
+      "description": "Una llave pequeña de bronce, con un grabado: 'caja del archivero'.",
+      "takeable": true,
+      "hidden_by": "libro_sermones"
+    },
+    "caja_fuerte": {
+      "name": "caja fuerte",
+      "description": "Caja fuerte de hierro empotrada en el muro. El disco de combinación visible es decorativo: la cerradura real está bajo una placa metálica que solo se abre con una llave específica.",
+      "container": true,
+      "contains": ["llave_grabada"],
+      "locked": { "requires_item": "llave_caja" },
+      "open_state": "closed"
+    },
+    "llave_grabada": {
+      "name": "llave grabada",
+      "description": "Una llave gruesa de hierro, con grabados de alquimia en la cabeza. Pesada. Encaja en una cerradura del mismo estilo.",
+      "takeable": true,
+      "hidden_by": "caja_fuerte"
+    },
+    "puerta_principal": {
+      "name": "puerta principal",
+      "description": "Una puerta de hierro negro con la cerradura grabada con símbolos. Solo una llave con grabado coincidente la abrirá.",
+      "locked": { "requires_item": "llave_grabada" },
+      "open_state": "closed"
+    }
+  },
+  "goal": { "type": "item_open", "item": "puerta_principal" }
+}

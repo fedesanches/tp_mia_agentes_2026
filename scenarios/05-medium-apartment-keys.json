@@ -1,0 +1,48 @@
+{
+  "id": "apartment-keys",
+  "difficulty": "medium",
+  "description": "Un apartamento de tres ambientes conectados. La llave de la puerta principal está guardada en un cajón de la cocina, al otro extremo del recorrido. Hay que navegar entre salas, encontrar la llave y volver al recibidor para usarla.",
+  "user_message": "Te despiertas en el recibidor de un apartamento desconocido. La puerta principal está cerrada con llave y no la ves por ningún lado. Hay un pasillo que se interna en el apartamento. Explora los ambientes, encuentra la llave y vuelve a abrir la puerta principal.",
+  "start_room": "recibidor",
+  "rooms": {
+    "recibidor": {
+      "name": "Recibidor",
+      "description": "Un recibidor estrecho con un perchero vacío y un espejo polvoriento. La puerta principal, de metal, está cerrada con una cerradura simple. Un pasillo se abre hacia el norte.",
+      "items": ["puerta_principal"],
+      "exits": { "norte": "pasillo" }
+    },
+    "pasillo": {
+      "name": "Pasillo",
+      "description": "Un pasillo en penumbra con cuadros torcidos. Conecta el recibidor al sur con la cocina al este.",
+      "items": [],
+      "exits": { "sur": "recibidor", "este": "cocina" }
+    },
+    "cocina": {
+      "name": "Cocina",
+      "description": "Una cocina pequeña con azulejos blancos. Hay una mesada con un cajón cerrado y olor a café frío.",
+      "items": ["cajon"],
+      "exits": { "oeste": "pasillo" }
+    }
+  },
+  "items": {
+    "puerta_principal": {
+      "name": "puerta principal",
+      "description": "Una puerta de metal con una cerradura simple. Necesita una llave para abrirse.",
+      "locked": { "requires_item": "llave_oro" },
+      "open_state": "closed"
+    },
+    "cajon": {
+      "name": "cajón de la cocina",
+      "description": "Un cajón de madera bajo la mesada. Se abre con un tirón y dentro hay cubiertos sueltos y algo más.",
+      "container": true,
+      "contains": ["llave_oro"]
+    },
+    "llave_oro": {
+      "name": "llave dorada",
+      "description": "Una llave dorada corriente, del tipo de las cerraduras de entrada.",
+      "takeable": true,
+      "hidden_by": "cajon"
+    }
+  },
+  "goal": { "type": "item_open", "item": "puerta_principal" }
+}

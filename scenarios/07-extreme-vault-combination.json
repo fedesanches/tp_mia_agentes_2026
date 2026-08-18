@@ -1,0 +1,111 @@
+{
+  "id": "vault-combination",
+  "difficulty": "extreme",
+  "description": "Una instalación de cinco salas. La puerta principal es un panel que solo abre cuando se le colocan TRES núcleos de energía, repartidos en salas distintas. Uno de los núcleos está en un depósito tras una puerta cerrada (la llave está en el taller), y otro en una vitrina cerrada (la llave está en el depósito). Hay que recorrer todas las salas, encadenar llaves entre salas y volver al vestíbulo a combinar las tres piezas.",
+  "user_message": "Te despiertas en el vestíbulo de una instalación. La puerta principal no tiene cerradura común: es un panel con tres ranuras etiquetadas para 'núcleos de energía'. No hay ningún núcleo a la vista aquí. Un pasillo lleva al resto de la instalación. Tendrás que encontrar los tres núcleos —están en salas distintas— y traerlos al panel. Algunas puertas y vitrinas están cerradas y sus llaves no están donde las necesitás.",
+  "start_room": "vestibulo",
+  "rooms": {
+    "vestibulo": {
+      "name": "Vestíbulo",
+      "description": "Un vestíbulo de hormigón con un panel de seguridad junto a la puerta principal. El panel tiene tres ranuras vacías rotuladas 'NÚCLEO'. Un pasillo se abre al norte.",
+      "items": ["puerta_principal"],
+      "exits": { "norte": "galeria" }
+    },
+    "galeria": {
+      "name": "Galería central",
+      "description": "Una galería que distribuye hacia varias salas: el taller al este, la biblioteca al oeste y, al norte, una puerta metálica de depósito que está cerrada.",
+      "items": ["puerta_deposito"],
+      "exits": { "sur": "vestibulo", "este": "taller", "oeste": "biblioteca", "norte": "deposito" },
+      "locked_exits": { "norte": "puerta_deposito" }
+    },
+    "taller": {
+      "name": "Taller",
+      "description": "Un taller con un banco de herramientas lleno de cajones. Huele a aceite y metal.",
+      "items": ["banco_herramientas"],
+      "exits": { "oeste": "galeria" }
+    },
+    "biblioteca": {
+      "name": "Biblioteca",
+      "description": "Una sala con estanterías y una vitrina de cristal cerrada con llave en el centro.",
+      "items": ["vitrina"],
+      "exits": { "este": "galeria" }
+    },
+    "deposito": {
+      "name": "Depósito",
+      "description": "Un depósito frío con un cajón de seguridad metálico contra la pared.",
+      "items": ["cajon_deposito"],
+      "exits": { "sur": "galeria" }
+    }
+  },
+  "items": {
+    "puerta_principal": {
+      "name": "puerta principal",
+      "description": "Una puerta blindada controlada por un panel de tres ranuras. Solo abre cuando se colocan los tres núcleos de energía.",
+      "locked": { "requires_items": ["nucleo_rojo", "nucleo_azul", "nucleo_verde"] },
+      "open_state": "closed"
+    },
+    "puerta_deposito": {
+      "name": "puerta del depósito",
+      "description": "Una puerta metálica con una cerradura robusta. Cerrada.",
+      "locked": { "requires_item": "llave_deposito" },
+      "open_state": "closed"
+    },
+    "banco_herramientas": {
+      "name": "banco de herramientas",
+      "description": "Un banco con varios cajones. Al abrirlos encontrás piezas sueltas.",
+      "container": true,
+      "contains": ["nucleo_rojo", "llave_deposito", "destornillador"]
+    },
+    "nucleo_rojo": {
+      "name": "núcleo rojo",
+      "description": "Un núcleo de energía con carcasa roja. Encaja en el panel del vestíbulo.",
+      "takeable": true,
+      "hidden_by": "banco_herramientas"
+    },
+    "llave_deposito": {
+      "name": "llave del depósito",
+      "description": "Una llave robusta con una etiqueta que dice 'DEPÓSITO'.",
+      "takeable": true,
+      "hidden_by": "banco_herramientas"
+    },
+    "destornillador": {
+      "name": "destornillador",
+      "description": "Un destornillador común. No parece abrir nada importante.",
+      "takeable": true,
+      "hidden_by": "banco_herramientas"
+    },
+    "cajon_deposito": {
+      "name": "cajón de seguridad",
+      "description": "Un cajón metálico. Se abre con un tirón y dentro hay piezas.",
+      "container": true,
+      "contains": ["nucleo_verde", "llave_vitrina"]
+    },
+    "nucleo_verde": {
+      "name": "núcleo verde",
+      "description": "Un núcleo de energía con carcasa verde. Encaja en el panel del vestíbulo.",
+      "takeable": true,
+      "hidden_by": "cajon_deposito"
+    },
+    "llave_vitrina": {
+      "name": "llave de la vitrina",
+      "description": "Una llave pequeña y fina, de las de vitrina de exposición.",
+      "takeable": true,
+      "hidden_by": "cajon_deposito"
+    },
+    "vitrina": {
+      "name": "vitrina",
+      "description": "Una vitrina de cristal cerrada con llave. Dentro se ve un núcleo azul.",
+      "container": true,
+      "contains": ["nucleo_azul"],
+      "locked": { "requires_item": "llave_vitrina" },
+      "open_state": "closed"
+    },
+    "nucleo_azul": {
+      "name": "núcleo azul",
+      "description": "Un núcleo de energía con carcasa azul. Encaja en el panel del vestíbulo.",
+      "takeable": true,
+      "hidden_by": "vitrina"
+    }
+  },
+  "goal": { "type": "item_open", "item": "puerta_principal" }
+}

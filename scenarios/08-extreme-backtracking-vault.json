@@ -1,0 +1,112 @@
+{
+  "id": "backtracking-vault",
+  "difficulty": "extreme",
+  "description": "Cinco salas en línea con puertas que se abren progresivamente. La trampa es de backtracking: la puerta principal (en la PRIMERA sala) necesita una llave maestra encerrada en un cofre de esa misma sala, y ese cofre solo abre con una llave oxidada que está en la ÚLTIMA sala. Para llegar a la última sala hay que abrir dos puertas con llaves intermedias. Hay que avanzar hasta el fondo y volver hasta el principio.",
+  "user_message": "Te despiertas en la entrada de una bóveda. La puerta principal de salida tiene una cerradura que pide una 'llave maestra'. En la misma sala hay un cofre antiguo cerrado: sospechás que la llave maestra está dentro, pero el cofre necesita una llave oxidada que no está aquí. Hacia el norte se abre una sucesión de salas con puertas cerradas. Vas a tener que internarte hasta el fondo para conseguir lo que abre el cofre del principio, y después volver.",
+  "start_room": "entrada",
+  "rooms": {
+    "entrada": {
+      "name": "Entrada de la bóveda",
+      "description": "Una antesala con la puerta principal de salida y un cofre antiguo de hierro contra la pared. Al norte hay un corredor.",
+      "items": ["cofre_antiguo", "puerta_principal"],
+      "exits": { "norte": "sala_a" }
+    },
+    "sala_a": {
+      "name": "Sala A",
+      "description": "Una sala con un escritorio cubierto de papeles. Al norte hay una puerta blindada cerrada.",
+      "items": ["escritorio", "puerta_blindada"],
+      "exits": { "sur": "entrada", "norte": "sala_b" },
+      "locked_exits": { "norte": "puerta_blindada" }
+    },
+    "sala_b": {
+      "name": "Sala B",
+      "description": "Una sala intermedia con un armario metálico y, al norte, una reja cerrada que da al fondo.",
+      "items": ["armario", "cofre_vacio", "reja"],
+      "exits": { "sur": "sala_a", "norte": "boveda" },
+      "locked_exits": { "norte": "reja" }
+    },
+    "boveda": {
+      "name": "Bóveda interior",
+      "description": "La sala más profunda. Una caja de seguridad empotrada en la pared, sin cerradura visible.",
+      "items": ["caja_seguridad"],
+      "exits": { "sur": "sala_b" }
+    }
+  },
+  "items": {
+    "puerta_principal": {
+      "name": "puerta principal",
+      "description": "La puerta de salida. Su cerradura pide una llave maestra.",
+      "locked": { "requires_item": "llave_maestra" },
+      "open_state": "closed"
+    },
+    "cofre_antiguo": {
+      "name": "cofre antiguo",
+      "description": "Un cofre de hierro con una cerradura corroída. Necesita una llave oxidada que encaje en su mecanismo viejo.",
+      "container": true,
+      "contains": ["llave_maestra"],
+      "locked": { "requires_item": "llave_oxidada" },
+      "open_state": "closed"
+    },
+    "llave_maestra": {
+      "name": "llave maestra",
+      "description": "Una llave maestra pesada. Abre la puerta principal.",
+      "takeable": true,
+      "hidden_by": "cofre_antiguo"
+    },
+    "escritorio": {
+      "name": "escritorio",
+      "description": "Un escritorio con cajones. Dentro hay una llave y papeles inútiles.",
+      "container": true,
+      "contains": ["llave_intermedia"]
+    },
+    "llave_intermedia": {
+      "name": "llave intermedia",
+      "description": "Una llave de acero con la etiqueta 'B-1'. Parece de una puerta blindada.",
+      "takeable": true,
+      "hidden_by": "escritorio"
+    },
+    "puerta_blindada": {
+      "name": "puerta blindada",
+      "description": "Una puerta blindada entre la sala A y la sala B. Cerrada.",
+      "locked": { "requires_item": "llave_intermedia" },
+      "open_state": "closed"
+    },
+    "armario": {
+      "name": "armario metálico",
+      "description": "Un armario alto. Dentro cuelga una llave grande.",
+      "container": true,
+      "contains": ["llave_boveda"]
+    },
+    "llave_boveda": {
+      "name": "llave de la reja",
+      "description": "Una llave grande y dentada, del tipo de una reja pesada.",
+      "takeable": true,
+      "hidden_by": "armario"
+    },
+    "cofre_vacio": {
+      "name": "cofre pequeño",
+      "description": "Un cofre pequeño sin cerradura. Está completamente vacío.",
+      "container": true,
+      "contains": []
+    },
+    "reja": {
+      "name": "reja",
+      "description": "Una reja de barrotes entre la sala B y la bóveda. Cerrada con llave.",
+      "locked": { "requires_item": "llave_boveda" },
+      "open_state": "closed"
+    },
+    "caja_seguridad": {
+      "name": "caja de seguridad",
+      "description": "Una caja empotrada. Se abre sin llave y dentro hay una única llave muy vieja.",
+      "container": true,
+      "contains": ["llave_oxidada"]
+    },
+    "llave_oxidada": {
+      "name": "llave oxidada",
+      "description": "Una llave antigua y oxidada. Parece encajar en una cerradura corroída.",
+      "takeable": true,
+      "hidden_by": "caja_seguridad"
+    }
+  },
+  "goal": { "type": "item_open", "item": "puerta_principal" }
+}

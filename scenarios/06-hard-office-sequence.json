@@ -1,0 +1,86 @@
+{
+  "id": "office-sequence",
+  "difficulty": "hard",
+  "description": "Una oficina de cuatro ambientes. La llave de una caja fuerte está en el depósito; la caja (en el archivo) guarda el documento confidencial y la llave maestra de la puerta. El objetivo es compuesto y con orden: hay que llevarse el documento ANTES de abrir la puerta principal, que se sella al abrirse.",
+  "user_message": "Te despiertas en una oficina vacía. Tu objetivo: salir por la puerta principal LLEVÁNDOTE el documento confidencial. Aviso importante: la puerta principal se sella en cuanto la abrís, así que asegurate de tener el documento contigo ANTES de abrirla. La puerta necesita una llave maestra; la llave maestra y el documento están en una caja fuerte del archivo; y la llave de esa caja está guardada en el depósito. Recorré los ambientes en el orden correcto.",
+  "start_room": "oficina",
+  "rooms": {
+    "oficina": {
+      "name": "Oficina principal",
+      "description": "Una oficina con un escritorio amplio y una puerta principal blindada. Un corredor sale hacia el este.",
+      "items": ["escritorio", "puerta_principal"],
+      "exits": { "este": "pasillo" }
+    },
+    "pasillo": {
+      "name": "Corredor",
+      "description": "Un corredor central que distribuye hacia la oficina (oeste), el archivo (norte) y el depósito (este).",
+      "items": [],
+      "exits": { "oeste": "oficina", "norte": "archivo", "este": "deposito" }
+    },
+    "deposito": {
+      "name": "Depósito",
+      "description": "Un cuarto de limpieza con estanterías metálicas y un cajón etiquetado 'LLAVES'.",
+      "items": ["cajon_llaves"],
+      "exits": { "oeste": "pasillo" }
+    },
+    "archivo": {
+      "name": "Archivo",
+      "description": "Una sala con armarios de expedientes y una caja fuerte empotrada en la pared.",
+      "items": ["caja_fuerte"],
+      "exits": { "sur": "pasillo" }
+    }
+  },
+  "items": {
+    "escritorio": {
+      "name": "escritorio",
+      "description": "Un escritorio amplio con cajones. Están todos vacíos salvo por clips y papel en blanco.",
+      "container": true,
+      "contains": []
+    },
+    "puerta_principal": {
+      "name": "puerta principal",
+      "description": "Una puerta blindada con una cerradura institucional. Necesita la llave maestra. Una placa advierte: 'Se sella automáticamente al abrir'.",
+      "locked": { "requires_item": "llave_maestra" },
+      "open_state": "closed"
+    },
+    "cajon_llaves": {
+      "name": "cajón de llaves",
+      "description": "Un cajón metálico etiquetado 'LLAVES'. Dentro cuelga una sola llave pequeña.",
+      "container": true,
+      "contains": ["llave_caja"]
+    },
+    "llave_caja": {
+      "name": "llave de la caja fuerte",
+      "description": "Una llave pequeña y plana, claramente de una caja fuerte.",
+      "takeable": true,
+      "hidden_by": "cajon_llaves"
+    },
+    "caja_fuerte": {
+      "name": "caja fuerte",
+      "description": "Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.",
+      "container": true,
+      "contains": ["documento_confidencial", "llave_maestra"],
+      "locked": { "requires_item": "llave_caja" },
+      "open_state": "closed"
+    },
+    "documento_confidencial": {
+      "name": "documento confidencial",
+      "description": "Una carpeta sellada con la leyenda 'CONFIDENCIAL'. Es lo que viniste a buscar.",
+      "takeable": true,
+      "hidden_by": "caja_fuerte"
+    },
+    "llave_maestra": {
+      "name": "llave maestra",
+      "description": "Una llave maestra pesada, de las que abren cerraduras institucionales.",
+      "takeable": true,
+      "hidden_by": "caja_fuerte"
+    }
+  },
+  "goal": {
+    "type": "sequence",
+    "goals": [
+      { "type": "item_in_inventory", "item": "documento_confidencial" },
+      { "type": "item_open", "item": "puerta_principal" }
+    ]
+  }
+}

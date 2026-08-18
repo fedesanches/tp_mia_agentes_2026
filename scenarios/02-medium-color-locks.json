@@ -1,0 +1,89 @@
+{
+  "id": "color-locks",
+  "difficulty": "medium",
+  "description": "Un sótano con cuatro cofres pintados de colores distintos. Cada cofre tiene una cerradura del mismo color, y cada uno (excepto uno) guarda dentro la llave del color del siguiente cofre. La cadena empieza con una llave plateada a la vista y termina con la llave dorada que abre la puerta principal.",
+  "user_message": "Te despiertas en un sótano frío. La puerta principal, al fondo, está cerrada con una cerradura dorada considerable. Sobre una repisa baja brilla una llave plateada. Repartidos por el suelo hay cuatro cofres pintados de colores distintos (plateado, rojo, verde y azul), cada uno con su cerradura del mismo color. Algunos cofres están cerrados con llave, otros no. Encuentra la forma de salir.",
+  "start_room": "sotano",
+  "rooms": {
+    "sotano": {
+      "name": "Sótano",
+      "description": "Un sótano de piedra con olor a humedad y una bombilla solitaria colgando del techo. Una repisa baja en la pared norte sostiene una llave plateada brillante. En el suelo descansan cuatro cofres pintados de colores distintos. Al fondo, una puerta de roble con cerradura dorada.",
+      "items": [
+        "llave_plata",
+        "cofre_plata",
+        "cofre_rojo",
+        "cofre_verde",
+        "cofre_azul",
+        "puerta_principal"
+      ]
+    }
+  },
+  "items": {
+    "llave_plata": {
+      "name": "llave plateada",
+      "description": "Una llave pequeña y brillante, de plata pulida. Por su tamaño, parece encajar en una cerradura igualmente pequeña.",
+      "takeable": true
+    },
+    "cofre_plata": {
+      "name": "cofre plateado",
+      "description": "Un cofre pequeño con tachuelas plateadas y una cerradura del mismo color. Encaja con una llave del mismo color.",
+      "container": true,
+      "contains": ["llave_roja"],
+      "locked": { "requires_item": "llave_plata" },
+      "open_state": "closed"
+    },
+    "llave_roja": {
+      "name": "llave roja",
+      "description": "Una llave mediana esmaltada de rojo intenso.",
+      "takeable": true,
+      "hidden_by": "cofre_plata"
+    },
+    "cofre_rojo": {
+      "name": "cofre rojo",
+      "description": "Un cofre mediano pintado de rojo, con una cerradura roja del mismo tono. Encaja con una llave del mismo color.",
+      "container": true,
+      "contains": ["llave_verde"],
+      "locked": { "requires_item": "llave_roja" },
+      "open_state": "closed"
+    },
+    "llave_verde": {
+      "name": "llave verde",
+      "description": "Una llave grande esmaltada de verde oscuro, gruesa.",
+      "takeable": true,
+      "hidden_by": "cofre_rojo"
+    },
+    "cofre_verde": {
+      "name": "cofre verde",
+      "description": "Un cofre grande pintado de verde, con una cerradura verde voluminosa. Encaja con una llave del mismo color.",
+      "container": true,
+      "contains": ["llave_oro"],
+      "locked": { "requires_item": "llave_verde" },
+      "open_state": "closed"
+    },
+    "llave_oro": {
+      "name": "llave dorada",
+      "description": "Una llave dorada de aspecto institucional, gruesa y pesada. Encaja en cerraduras grandes.",
+      "takeable": true,
+      "hidden_by": "cofre_verde"
+    },
+    "cofre_azul": {
+      "name": "cofre azul",
+      "description": "Un cofre pintado de azul desconchado. Sorprendentemente, no tiene cerradura: las bisagras se abren al primer empujón.",
+      "container": true,
+      "contains": ["trapo_viejo"]
+    },
+    "trapo_viejo": {
+      "name": "trapo viejo",
+      "description": "Un trapo gris y manchado de aceite. Inservible.",
+      "takeable": true,
+      "hidden_by": "cofre_azul"
+    },
+    "puerta_principal": {
+      "name": "puerta principal",
+      "description": "Una puerta gruesa de roble con marco metálico y una cerradura dorada considerable.",
+      "locked": { "requires_item": "llave_oro" },
+      "open_state": "closed"
+    }
+  },
+  "goal": { "type": "item_open", "item": "puerta_principal" }
+}
