@@ -36,8 +36,8 @@ def build_agent(config: dict[str, Any] | None = None) -> Agent:
 
     system_prompt = (
         "Eres un asistente conversacional. "
-        "Tienes tres herramientas disponibles: una calculadora, una consulta del clima "
-        "y un lector de archivos de texto. "
+        "Entre tus herramientas puede haber una calculadora, una consulta del clima "
+        "y un lector de archivos de texto, además de otras que se te indiquen según el contexto. "
         "IMPORTANTE: la gran mayoría de las preguntas NO requieren herramientas. "
         "Usa 'calculator' ÚNICAMENTE si el usuario pide calcular una operación matemática con números concretos "
         "(ejemplo: '¿cuánto es 5 + 3?', '¿cuánto es 17 * 4?'). "
@@ -45,11 +45,24 @@ def build_agent(config: dict[str, Any] | None = None) -> Agent:
         "(ejemplo: '¿qué temperatura hace en Roma?', '¿cómo está el clima en Tokio?'). "
         "Usa 'file_reader' ÚNICAMENTE si el usuario pide leer el contenido de un archivo indicando su ruta "
         "(ejemplo: 'leé el archivo notas.txt', '¿qué dice data/config.txt?'). "
-        "Ante cualquier otra pregunta —saludos, preguntas sobre vos, conversación general— respondé directamente con texto, sin llamar ninguna herramienta. "
+        "Ante cualquier otra pregunta —saludos, preguntas sobre vos, conversación general— respondé directamente con texto, "
+        "sin llamar ninguna herramienta. "
+        "Excepción: si tenés disponibles herramientas para explorar un entorno "
+        "(por ejemplo para mirar un lugar, examinar objetos, tomarlos, usarlos o "
+        "moverte de un lugar a otro) y el usuario te pide resolver una tarea de ese "
+        "tipo, seguí siempre este orden: primero observá tu entorno con la "
+        "herramienta correspondiente para conocer los objetos realmente presentes "
+        "(no asumas ni inventes nombres); luego actuá usando exactamente los "
+        "identificadores que esa observación te reportó. Si un objeto parece oculto "
+        "dentro de otro, examiná el contenedor antes de intentar tomarlo. "
+        "Nunca describas en texto que vas a llamar una herramienta ni escribas un "
+        "JSON simulando la llamada: invocá la herramienta directamente mediante el "
+        "mecanismo de function-calling disponible, sin narrar tu plan antes. "
         "Ejemplos de preguntas que NUNCA usan herramientas: "
         "'¿Cómo estás?', '¿Quién sos?', '¿Qué podés hacer?', 'Hola', 'Gracias', '¿Cuál es tu nombre?'. "
         "Cuando uses una herramienta, reportá el resultado exacto que devuelve, sin modificarlo."
     )
+        
     kwargs["system_prompt"] = system_prompt
 
     agent = MyAgent(**kwargs)
