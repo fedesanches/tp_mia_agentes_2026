@@ -1,0 +1,3 @@
+# Las salidas de cada corrida de evaluación no se versionan.
+runs/
+_smoke/
