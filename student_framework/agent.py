@@ -216,14 +216,27 @@ class MyAgent:
         window_start = len(history) - budget
         if self._last_user_index >= window_start:
             # el mensaje de usuario ya cae dentro de la ventana de cola
-            return list(history[window_start:])
+            return self._drop_orphan_tool_results(list(history[window_start:]))
 
         # liberamos el espacio del extremo más viejo de la ventana
         last_user_message = history[self._last_user_index]
         remaining = budget - 1
         tail = history[-remaining:] if remaining > 0 else []
-        
+        tail = self._drop_orphan_tool_results(tail)
+
         return [last_user_message, *tail]
+
+    @staticmethod
+    def _drop_orphan_tool_results(
+        messages: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Descarta resultados de tool al inicio de la ventana cuyo assistant
+        (tool_calls) quedó fuera del recorte: sin ese toolUse previo, la API
+        Converse de Bedrock rechaza el bloque toolResult huérfano."""
+        start = 0
+        while start < len(messages) and messages[start].get("role") == "tool":
+            start += 1
+        return messages[start:]
 
     def _call_with_retries(self, fn, max_attempts: int = 3):
         """

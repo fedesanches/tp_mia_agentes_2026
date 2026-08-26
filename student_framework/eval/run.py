@@ -53,6 +53,7 @@ from mia_world.goals import check_goal  # noqa: E402
 from mia_world.scenarios import list_scenarios, load_scenario  # noqa: E402
 from mia_world.state import Scenario  # noqa: E402
 from mia_world.tools import make_world_tools  # noqa: E402
+from mia_agents._env import load_env_files  # noqa: E402
 
 
 DEFAULT_SCENARIOS_DIR = REPO_ROOT / "scenarios"
@@ -124,6 +125,115 @@ def _build_agent(module_name: str, max_iterations: int) -> Any:
     return agent
 
 
+# --- Rúbrica cualitativa determinista (US-03, opción A) ------------------------
+#
+# Puntúa la *calidad del proceso* de resolución a partir de la traza de
+# `steps` (no del texto libre), en 4 dimensiones de 0–2 (total 0–8). Es
+# determinista y sin coste de LLM, por lo que es 100% reproducible: dos
+# corridas con la misma traza dan el mismo puntaje.
+
+RUBRIC_MAX = 8
+_EXPLORE_TOOLS = {"look", "examine"}
+_ACTION_TOOLS = {"use", "take"}
+
+
+def _call_identity(step: dict[str, Any]) -> tuple[str | None, str]:
+    """Identidad normalizada de una llamada, para detectar repeticiones."""
+    name = step.get("tool_name")
+    raw = step.get("tool_input")
+    try:
+        args = json.loads(raw) if raw else {}
+        norm = json.dumps(args, sort_keys=True, ensure_ascii=False)
+    except (json.JSONDecodeError, TypeError):
+        norm = raw or ""
+    return (name, norm)
+
+
+def _is_error_output(step: dict[str, Any]) -> bool:
+    """True si el paso falló: error del bucle o tool_output `Error: ...`."""
+    if step.get("error"):
+        return True
+    out = (step.get("tool_output") or "").strip().lower()
+    return out.startswith("error:")
+
+
+def _is_missing_id_output(step: dict[str, Any]) -> bool:
+    """True si el tool_output indica un id inexistente o no visible."""
+    out = (step.get("tool_output") or "").lower()
+    return "no existe ning" in out or "no ves ning" in out
+
+
+def _score_exploration_before_action(steps: list[dict[str, Any]]) -> int:
+    """R1: ¿exploró (`look`/`examine`) antes de la primera acción?"""
+    action_idx = next(
+        (i for i, s in enumerate(steps) if s.get("tool_name") in _ACTION_TOOLS),
+        None,
+    )
+    explored_any = any(s.get("tool_name") in _EXPLORE_TOOLS for s in steps)
+    if action_idx is None:
+        return 1 if explored_any else 0
+    if any(steps[i].get("tool_name") in _EXPLORE_TOOLS for i in range(action_idx)):
+        return 2
+    return 1 if explored_any else 0
+
+
+def _score_no_redundant_actions(steps: list[dict[str, Any]]) -> int:
+    """R2: penaliza repetir la misma llamada `(tool, args)` idéntica."""
+    if not steps:
+        return 0
+    ids = [_call_identity(s) for s in steps]
+    dup = len(ids) - len(set(ids))
+    if dup == 0:
+        return 2
+    return 1 if dup / len(ids) <= 0.25 else 0
+
+
+def _score_no_hallucinated_ids(steps: list[dict[str, Any]]) -> int:
+    """R3: penaliza invocar objetos inexistentes / no visibles."""
+    if not steps:
+        return 0
+    bad = sum(1 for s in steps if _is_missing_id_output(s))
+    if bad == 0:
+        return 2
+    return 1 if bad / len(steps) <= 0.25 else 0
+
+
+def _score_error_recovery(steps: list[dict[str, Any]]) -> int:
+    """R4: tras un paso con error, ¿cambió de acción en vez de insistir?"""
+    if not steps:
+        return 0
+    error_idxs = [i for i, s in enumerate(steps) if _is_error_output(s)]
+    if not error_idxs:
+        return 2  # nada que recuperar: no se penaliza.
+    recovered = 0
+    for i in error_idxs:
+        nxt = _call_identity(steps[i + 1]) if i + 1 < len(steps) else None
+        if nxt is not None and nxt != _call_identity(steps[i]):
+            recovered += 1
+    frac = recovered / len(error_idxs)
+    if frac >= 0.8:
+        return 2
+    return 1 if frac >= 0.4 else 0
+
+
+def score_rubric(steps: list[dict[str, Any]]) -> dict[str, Any]:
+    """Puntaje de calidad de proceso (0–8) sobre la traza de `steps`."""
+    r1 = _score_exploration_before_action(steps)
+    r2 = _score_no_redundant_actions(steps)
+    r3 = _score_no_hallucinated_ids(steps)
+    r4 = _score_error_recovery(steps)
+    total = r1 + r2 + r3 + r4
+    return {
+        "exploration_before_action": r1,
+        "no_redundant_actions": r2,
+        "no_hallucinated_ids": r3,
+        "error_recovery": r4,
+        "total": total,
+        "max": RUBRIC_MAX,
+        "normalized": round(total / RUBRIC_MAX, 3),
+    }
+
+
 def run_scenario(
     scenario: Scenario,
     *,
@@ -183,6 +293,7 @@ def run_scenario(
             "latency_seconds": round(latency, 3),
             "input_tokens": result.input_tokens if result is not None else None,
             "output_tokens": result.output_tokens if result is not None else None,
+            "rubric": score_rubric(steps),
         }
     )
     return record
@@ -209,6 +320,19 @@ def build_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
         if c["goal_achieved"]:
             bucket["solved"] += 1
 
+    rubrics = [c["rubric"] for c in cases if c.get("rubric")]
+    rubric_dims = (
+        "exploration_before_action",
+        "no_redundant_actions",
+        "no_hallucinated_ids",
+        "error_recovery",
+        "total",
+        "normalized",
+    )
+    rubric_avg = {
+        dim: _avg([r[dim] for r in rubrics]) for dim in rubric_dims
+    }
+
     return {
         "total_scenarios": total,
         "solved": solved,
@@ -217,6 +341,7 @@ def build_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
         "avg_latency_seconds": _avg(latencies),
         "total_input_tokens": sum(in_tokens) if in_tokens else None,
         "total_output_tokens": sum(out_tokens) if out_tokens else None,
+        "rubric_avg": rubric_avg,
         "cases_with_run_error": sum(1 for c in cases if c["run_error"]),
     }
 
@@ -264,6 +389,34 @@ def _render_report(meta: dict[str, Any], summary: dict[str, Any], cases: list[di
             f"{c['latency_seconds']} |"
         )
     lines.append("")
+    lines.append("## Calidad de proceso — rúbrica determinista (0–8)")
+    lines.append("")
+    lines.append(
+        "Métrica cualitativa (US-03, opción A): puntúa la traza de acciones, "
+        "no el texto. Dimensiones 0–2: **Explor.** (exploró antes de actuar), "
+        "**No-red.** (sin acciones repetidas), **No-halu.** (sin ids "
+        "inexistentes), **Recup.** (cambió de acción tras un error)."
+    )
+    lines.append("")
+    lines.append(
+        "| Escenario | Explor. | No-red. | No-halu. | Recup. | Total | Norm. |"
+    )
+    lines.append("|---|---|---|---|---|---|---|")
+    for c in cases:
+        r = c.get("rubric") or {}
+        lines.append(
+            f"| {c['scenario']} | {r.get('exploration_before_action')} | "
+            f"{r.get('no_redundant_actions')} | {r.get('no_hallucinated_ids')} | "
+            f"{r.get('error_recovery')} | {r.get('total')}/{r.get('max')} | "
+            f"{r.get('normalized')} |"
+        )
+    ra = summary.get("rubric_avg") or {}
+    lines.append(
+        f"| **promedio** | {ra.get('exploration_before_action')} | "
+        f"{ra.get('no_redundant_actions')} | {ra.get('no_hallucinated_ids')} | "
+        f"{ra.get('error_recovery')} | {ra.get('total')} | {ra.get('normalized')} |"
+    )
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -293,6 +446,11 @@ def run_all(
     if not scenarios:
         print(f"(sin escenarios en {scenarios_dir})", file=sys.stderr)
         return 1
+
+    # Cargar el `.env` (Ollama/Bedrock) antes de etiquetar el proveedor:
+    # `from_env()` lo hace recién al construir el agente, así que sin esto
+    # el label reportaría "no configurado" aunque el `.env` sí lo defina.
+    load_env_files()
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = out_dir / timestamp
