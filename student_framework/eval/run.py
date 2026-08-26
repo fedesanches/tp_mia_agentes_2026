@@ -14,6 +14,7 @@ Opciones útiles:
 
     python student_framework/eval/run.py --scenario easy      # un escenario
     python student_framework/eval/run.py --max-iterations 40  # tope de pasos
+    python student_framework/eval/run.py --repeat 3           # promediar N corridas
     python student_framework/eval/run.py --out-dir <dir>      # dónde guardar
 
 Salidas (bajo `student_framework/eval/runs/<timestamp>/`):
@@ -29,6 +30,7 @@ exportar `build_agent`, y debe haber un proveedor LLM configurado
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import platform
 import sys
@@ -247,7 +249,7 @@ def run_scenario(
     excepciones: un fallo del agente se captura en el propio registro para
     que el resto del dataset siga corriendo.
     """
-    world = scenario.initial_world
+    world = copy.deepcopy(scenario.initial_world)
     optimal = OPTIMAL_CALLS.get(scenario.id)
 
     record: dict[str, Any] = {
@@ -333,11 +335,38 @@ def build_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
         dim: _avg([r[dim] for r in rubrics]) for dim in rubric_dims
     }
 
+    by_scenario: dict[str, dict[str, Any]] = {}
+    for c in cases:
+        b = by_scenario.setdefault(
+            c["scenario"],
+            {
+                "difficulty": c["difficulty"],
+                "runs": 0,
+                "solved": 0,
+                "_calls": [],
+                "_rubric": [],
+            },
+        )
+        b["runs"] += 1
+        if c["goal_achieved"]:
+            b["solved"] += 1
+        b["_calls"].append(c["num_tool_calls"])
+        if c.get("rubric"):
+            b["_rubric"].append(c["rubric"]["total"])
+    for b in by_scenario.values():
+        b["success_rate"] = (
+            round(b["solved"] / b["runs"], 3) if b["runs"] else None
+        )
+        b["avg_calls"] = _avg(b.pop("_calls"))
+        b["avg_rubric_total"] = _avg(b.pop("_rubric"))
+
     return {
         "total_scenarios": total,
+        "num_scenarios": len(by_scenario),
         "solved": solved,
         "success_rate": round(solved / total, 3) if total else None,
         "by_difficulty": by_difficulty,
+        "by_scenario": by_scenario,
         "avg_latency_seconds": _avg(latencies),
         "total_input_tokens": sum(in_tokens) if in_tokens else None,
         "total_output_tokens": sum(out_tokens) if out_tokens else None,
@@ -355,13 +384,22 @@ def _render_report(meta: dict[str, Any], summary: dict[str, Any], cases: list[di
     lines.append(f"- Módulo del agente: `{meta['module']}`")
     lines.append(f"- Proveedor LLM: {meta['llm_provider']}")
     lines.append(f"- max_iterations: {meta['max_iterations']}")
+    if meta.get("repeat", 1) > 1:
+        lines.append(f"- Repeticiones por escenario: {meta['repeat']}")
     lines.append("")
     lines.append("## Resumen")
     lines.append("")
-    lines.append(
-        f"- Escenarios resueltos: **{summary['solved']}/{summary['total_scenarios']}** "
-        f"(éxito {summary['success_rate']})"
-    )
+    if meta.get("repeat", 1) > 1:
+        lines.append(
+            f"- Corridas exitosas: **{summary['solved']}/{summary['total_scenarios']}** "
+            f"(tasa media {summary['success_rate']}, sobre "
+            f"{summary['num_scenarios']} escenarios × {meta['repeat']} repeticiones)"
+        )
+    else:
+        lines.append(
+            f"- Escenarios resueltos: **{summary['solved']}/{summary['total_scenarios']}** "
+            f"(éxito {summary['success_rate']})"
+        )
     lines.append(f"- Latencia promedio: {summary['avg_latency_seconds']} s")
     lines.append(
         f"- Tokens totales: {summary['total_input_tokens']} in / "
@@ -376,19 +414,35 @@ def _render_report(meta: dict[str, Any], summary: dict[str, Any], cases: list[di
     for diff, bucket in summary["by_difficulty"].items():
         lines.append(f"| {diff} | {bucket['solved']}/{bucket['total']} |")
     lines.append("")
-    lines.append("## Detalle por escenario")
-    lines.append("")
-    lines.append("| Escenario | Dif. | Goal | Calls | Óptimo | Errores | Latencia (s) |")
-    lines.append("|---|---|---|---|---|---|---|")
-    for c in cases:
-        goal_mark = "✅" if c["goal_achieved"] else "❌"
-        optimal = c["optimal_calls"] if c["optimal_calls"] is not None else "—"
+    if meta.get("repeat", 1) > 1:
+        lines.append("## Estabilidad por escenario (repeticiones)")
+        lines.append("")
         lines.append(
-            f"| {c['scenario']} | {c['difficulty']} | {goal_mark} | "
-            f"{c['num_tool_calls']} | {optimal} | {c['num_tool_errors']} | "
-            f"{c['latency_seconds']} |"
+            "| Escenario | Dif. | Éxito (k/N) | Tasa | Calls medio | Rúbrica media |"
         )
-    lines.append("")
+        lines.append("|---|---|---|---|---|---|")
+        for sid, b in summary["by_scenario"].items():
+            lines.append(
+                f"| {sid} | {b['difficulty']} | {b['solved']}/{b['runs']} | "
+                f"{b['success_rate']} | {b['avg_calls']} | {b['avg_rubric_total']} |"
+            )
+        lines.append("")
+    else:
+        lines.append("## Detalle por escenario")
+        lines.append("")
+        lines.append(
+            "| Escenario | Dif. | Goal | Calls | Óptimo | Errores | Latencia (s) |"
+        )
+        lines.append("|---|---|---|---|---|---|---|")
+        for c in cases:
+            goal_mark = "✅" if c["goal_achieved"] else "❌"
+            optimal = c["optimal_calls"] if c["optimal_calls"] is not None else "—"
+            lines.append(
+                f"| {c['scenario']} | {c['difficulty']} | {goal_mark} | "
+                f"{c['num_tool_calls']} | {optimal} | {c['num_tool_errors']} | "
+                f"{c['latency_seconds']} |"
+            )
+        lines.append("")
     lines.append("## Calidad de proceso — rúbrica determinista (0–8)")
     lines.append("")
     lines.append(
@@ -402,14 +456,15 @@ def _render_report(meta: dict[str, Any], summary: dict[str, Any], cases: list[di
         "| Escenario | Explor. | No-red. | No-halu. | Recup. | Total | Norm. |"
     )
     lines.append("|---|---|---|---|---|---|---|")
-    for c in cases:
-        r = c.get("rubric") or {}
-        lines.append(
-            f"| {c['scenario']} | {r.get('exploration_before_action')} | "
-            f"{r.get('no_redundant_actions')} | {r.get('no_hallucinated_ids')} | "
-            f"{r.get('error_recovery')} | {r.get('total')}/{r.get('max')} | "
-            f"{r.get('normalized')} |"
-        )
+    if meta.get("repeat", 1) == 1:
+        for c in cases:
+            r = c.get("rubric") or {}
+            lines.append(
+                f"| {c['scenario']} | {r.get('exploration_before_action')} | "
+                f"{r.get('no_redundant_actions')} | {r.get('no_hallucinated_ids')} | "
+                f"{r.get('error_recovery')} | {r.get('total')}/{r.get('max')} | "
+                f"{r.get('normalized')} |"
+            )
     ra = summary.get("rubric_avg") or {}
     lines.append(
         f"| **promedio** | {ra.get('exploration_before_action')} | "
@@ -440,6 +495,7 @@ def run_all(
     scenarios_dir: Path,
     out_dir: Path,
     max_iterations: int,
+    repeat: int = 1,
 ) -> int:
     """Corre la evaluación completa y persiste los registros. Devuelve exit code."""
     scenarios = _resolve_scenarios(scenario_spec, scenarios_dir)
@@ -462,42 +518,57 @@ def run_all(
         "module": module_name,
         "llm_provider": _llm_provider_label(),
         "max_iterations": max_iterations,
+        "repeat": repeat,
         "python": platform.python_version(),
         "scenarios_dir": str(scenarios_dir),
     }
 
-    print(f"# Evaluación M3 — {len(scenarios)} escenario(s)", file=sys.stderr)
+    total_label = f"{len(scenarios)} escenario(s)"
+    if repeat > 1:
+        total_label += f" × {repeat} repeticiones"
+    print(f"# Evaluación M3 — {total_label}", file=sys.stderr)
     print(f"# Proveedor LLM: {meta['llm_provider']}", file=sys.stderr)
     print(f"# Registros en: {run_dir}", file=sys.stderr)
     print(file=sys.stderr)
 
     cases: list[dict[str, Any]] = []
     for scenario in scenarios:
-        print(
-            f"→ {scenario.id} ({scenario.difficulty}) ...",
-            end="",
-            flush=True,
-            file=sys.stderr,
-        )
-        case = run_scenario(
-            scenario,
-            module_name=module_name,
-            max_iterations=max_iterations,
-        )
-        cases.append(case)
+        for r in range(repeat):
+            label = (
+                scenario.id
+                if repeat == 1
+                else f"{scenario.id} #{r + 1}/{repeat}"
+            )
+            print(
+                f"→ {label} ({scenario.difficulty}) ...",
+                end="",
+                flush=True,
+                file=sys.stderr,
+            )
+            case = run_scenario(
+                scenario,
+                module_name=module_name,
+                max_iterations=max_iterations,
+            )
+            case["repeat_index"] = r
+            cases.append(case)
 
-        case_path = cases_dir / f"{scenario.id}.json"
-        case_path.write_text(
-            json.dumps(case, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+            fname = (
+                f"{scenario.id}.json"
+                if repeat == 1
+                else f"{scenario.id}__r{r + 1}.json"
+            )
+            (cases_dir / fname).write_text(
+                json.dumps(case, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
 
-        status = "OK " if case["goal_achieved"] else "FALLÓ"
-        extra = " (error de ejecución)" if case["run_error"] else ""
-        print(
-            f" {status} — {case['num_tool_calls']} calls, "
-            f"{case['latency_seconds']}s{extra}",
-            file=sys.stderr,
-        )
+            status = "OK " if case["goal_achieved"] else "FALLÓ"
+            extra = " (error de ejecución)" if case["run_error"] else ""
+            print(
+                f" {status} — {case['num_tool_calls']} calls, "
+                f"{case['latency_seconds']}s{extra}",
+                file=sys.stderr,
+            )
 
     summary = build_summary(cases)
     payload = {"meta": meta, "summary": summary, "cases": cases}
@@ -559,7 +630,20 @@ def main(argv: list[str] | None = None) -> int:
             f"(por defecto: {DEFAULT_MAX_ITERATIONS})."
         ),
     )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help=(
+            "Repeticiones por escenario para promediar la varianza del LLM "
+            "(por defecto: 1). Con N>1 el reporte agrega tasa de éxito media "
+            "y una tabla de estabilidad por escenario."
+        ),
+    )
     args = parser.parse_args(argv)
+
+    if args.repeat < 1:
+        parser.error("--repeat debe ser >= 1")
 
     return run_all(
         scenario_spec=args.scenario,
@@ -567,6 +651,7 @@ def main(argv: list[str] | None = None) -> int:
         scenarios_dir=Path(args.scenarios_dir),
         out_dir=Path(args.out_dir),
         max_iterations=args.max_iterations,
+        repeat=args.repeat,
     )
 
 

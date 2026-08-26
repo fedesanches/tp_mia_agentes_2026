@@ -50,6 +50,12 @@ Las piezas de M1+M2 que este problema ejercita directamente:
 - **Registro de las world-tools sobre `build_agent`.** No creamos un
   entry point paralelo: reutilizamos `build_agent` tal cual y añadimos las
   herramientas del mundo encima, replicando el patrón de `mia_world/cli.py`.
+- **Repeticiones para promediar la varianza (`--repeat N`).** El arnés
+  puede correr cada escenario N veces y reportar la tasa de éxito media
+  (pass@k) con una tabla de estabilidad por escenario. Como
+  `Scenario.initial_world` es un objeto `World` mutable **compartido**,
+  cada corrida parte de una `copy.deepcopy` fresca para no arrastrar
+  estado entre repeticiones. Se usa en el experimento de §4.3.
 
 ### 1.3. Adaptación del agente a la sala de escape (US-01)
 
@@ -77,6 +83,7 @@ manuales:
 python student_framework/eval/run.py            # los 8 escenarios
 python student_framework/eval/run.py --scenario easy
 python student_framework/eval/run.py --max-iterations 40
+python student_framework/eval/run.py --repeat 3  # promediar N corridas
 ```
 
 Por cada caso, el arnés construye un agente **fresco** (para que no haya
@@ -96,9 +103,10 @@ Salidas en disco, bajo `student_framework/eval/runs/<timestamp>/`:
 
 - `cases/<scenario_id>.json` — un registro completo por escenario.
 - `summary.json` — métricas agregadas legibles por máquina (incluye
-  `meta` con timestamp, proveedor LLM, `max_iterations`, versión de
-  Python).
-- `report.md` — resumen legible por humanos con tabla por escenario.
+  `meta` con timestamp, proveedor LLM, `max_iterations`, `repeat`, versión
+  de Python, y `by_scenario` con tasa/calls/rúbrica medios cuando N>1).
+- `report.md` — resumen legible por humanos con tabla por escenario (o
+  tabla de **estabilidad por escenario** cuando `--repeat` > 1).
 
 La reproducibilidad se apoya en: agente fresco por caso, semilla de
 configuración registrada en `meta`, y verificación de goal sobre estado
@@ -293,10 +301,42 @@ también expone la **alta varianza por corrida** (ver §5): backtracking-vault
 pasa con *básico* y falla con *v1/v2*, lo que sugiere que parte de estas
 diferencias es ruido, no señal. Se adoptó *v1* como configuración base.
 
-### 4.3. Experimentos propuestos (no ejecutados)
+### 4.3. Presupuesto de iteraciones `max_iterations` (40 → 10)
 
-- **`max_iterations` (40 → 10):** medir la caída de éxito en horizonte
-  largo; soportado por el flag `--max-iterations`.
+**Qué se cambió.** Única variable: el tope de iteraciones del bucle del
+agente — 40 (base US-02) vs 10 — con todo lo demás igual (prompt v1,
+nova-lite). Para controlar la varianza del modelo (§5) se corrió el
+subconjunto **medium+hard** (4 escenarios) con **3 repeticiones** por
+escenario usando el nuevo flag `--repeat 3` (12 corridas por config).
+
+| Escenario | Dif. | Éxito \@40 | Éxito \@10 | Calls medio \@40 | Rúbrica \@40 / \@10 |
+|---|---|---|---|---|---|
+| color-locks | medium | 1/3 (0.33) | 0/3 | 33.7 | 5.0 / 5.0 |
+| apartment-keys | medium | 3/3 (1.0) | 0/3 | 13.3 | 5.7 / 6.0 |
+| library-search | hard | 2/3 (0.67) | 0/3 | 24.7 | 6.7 / 7.0 |
+| office-sequence | hard | 1/3 (0.33)\* | 0/3 | 26.7 | 3.7 / 5.7 |
+| **Total** | | **7/12 (0.58)** | **0/12 (0.0)** | | |
+
+\* office-sequence \@40 tuvo 1 corrida con `ModelErrorException` (fallo
+transitorio de nova-lite en la secuencia de tool-use), contada como
+no-resuelta. Costos por config: latencia media 22–28 s \@40 vs ~11 s \@10;
+tokens de entrada ~540–700k \@40 vs ~165–185k \@10 (por 6 corridas).
+
+**Conclusión.** Recortar el presupuesto de 40 a 10 iteraciones **colapsa
+el éxito de 58 % a 0 %** en medium/hard: ninguna cadena se completa. La
+causa **no** es la calidad del proceso — la rúbrica media a 10 iteraciones
+es igual o **mayor** (p. ej. library-search 7.0 vs 6.7) porque se acumulan
+menos acciones redundantes — sino que el agente **se queda sin presupuesto
+antes de terminar**: la exploración (`look`/`examine`) consume iteraciones
+antes de las acciones, y estos escenarios necesitan 7–13 llamadas óptimas
+más el margen de exploración. Esto aísla `max_iterations` como parámetro de
+infraestructura **necesario pero no suficiente**: 40 habilita las
+soluciones pero no las garantiza (la varianza del modelo sigue mandando).
+Es el complemento de §4.2 — el prompt guía *qué* hacer; el presupuesto
+define *cuánto* margen hay para hacerlo.
+
+### 4.4. Experimentos propuestos (no ejecutados)
+
 - **Memoria acotada (`max_history_messages` chico):** impacto en escenarios
   multi-sala que exigen recordar el mapa.
 
@@ -306,9 +346,11 @@ diferencias es ruido, no señal. Se adoptó *v1* como configuración base.
   fuente de no-determinismo del arnés es el modelo (temperatura 0.2, sin
   seed). Observamos que un mismo prompt da 5/8 o 6/8 y que escenarios
   individuales cambian de resultado entre corridas. **El pass/fail de una
-  sola corrida no es confiable.** Próximo paso concreto: agregar un flag
-  `--repeat N` al harness y reportar **tasa de éxito media ± desvío**
-  (pass@k) por escenario.
+  sola corrida no es confiable.** Por eso implementamos el flag
+  `--repeat N` en el harness, que corre cada escenario N veces y reporta
+  la **tasa de éxito media** (pass@k) más una tabla de estabilidad por
+  escenario; §4.3 lo usa con N=3. Próximo paso: reportar también el
+  **desvío estándar** y subir N donde el presupuesto de tokens lo permita.
 - **Techo del modelo en horizonte largo.** vault-combination y
   backtracking-vault (`extreme`) exigen planificación de varios pasos y
   backtracking (volver al vestíbulo a colocar 3 núcleos; abrir una puerta
