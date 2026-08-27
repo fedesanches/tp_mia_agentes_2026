@@ -1,0 +1,283 @@
+{
+  "scenario": "office-sequence",
+  "difficulty": "hard",
+  "description": "Una oficina de cuatro ambientes. La llave de una caja fuerte está en el depósito; la caja (en el archivo) guarda el documento confidencial y la llave maestra de la puerta. El objetivo es compuesto y con orden: hay que llevarse el documento ANTES de abrir la puerta principal, que se sella al abrirse.",
+  "user_message": "Te despiertas en una oficina vacía. Tu objetivo: salir por la puerta principal LLEVÁNDOTE el documento confidencial. Aviso importante: la puerta principal se sella en cuanto la abrís, así que asegurate de tener el documento contigo ANTES de abrirla. La puerta necesita una llave maestra; la llave maestra y el documento están en una caja fuerte del archivo; y la llave de esa caja está guardada en el depósito. Recorré los ambientes en el orden correcto.",
+  "goal": {
+    "type": "sequence",
+    "goals": [
+      {
+        "type": "item_in_inventory",
+        "item": "documento_confidencial"
+      },
+      {
+        "type": "item_open",
+        "item": "puerta_principal"
+      }
+    ]
+  },
+  "optimal_calls": 13,
+  "goal_achieved": false,
+  "goal_reason": "faltan condiciones: documento confidencial no está en el inventario; puerta principal está cerrada",
+  "answer": "",
+  "agent_error": "Se alcanzo el limite de iteraciones sin respuesta final.",
+  "run_error": null,
+  "steps": [
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Oficina principal.\nUna oficina con un escritorio amplio y una puerta principal blindada. Un corredor sale hacia el este.\nVes:\n  - escritorio [id: escritorio]\n  - puerta principal [id: puerta_principal] (cerrada)\nSalidas: este.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"este\"}",
+      "tool_output": "Caminas hacia este. Llegas a Corredor.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Corredor.\nUn corredor central que distribuye hacia la oficina (oeste), el archivo (norte) y el depósito (este).\nNo ves nada de interés.\nSalidas: este, norte, oeste.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"este\"}",
+      "tool_output": "Caminas hacia este. Llegas a Depósito.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Depósito.\nUn cuarto de limpieza con estanterías metálicas y un cajón etiquetado 'LLAVES'.\nVes:\n  - cajón de llaves [id: cajon_llaves]\nSalidas: oeste.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"cajon_llaves\"}",
+      "tool_output": "cajón de llaves: Un cajón metálico etiquetado 'LLAVES'. Dentro cuelga una sola llave pequeña.\nContiene:\n  - llave de la caja fuerte [id: llave_caja]",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"oeste\"}",
+      "tool_output": "Caminas hacia oeste. Llegas a Corredor.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"norte\"}",
+      "tool_output": "Caminas hacia norte. Llegas a Archivo.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo.\nUna sala con armarios de expedientes y una caja fuerte empotrada en la pared.\nVes:\n  - caja fuerte [id: caja_fuerte] (cerrada)\nSalidas: sur.",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "Error: no llevas ningún 'llave_caja'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo.\nUna sala con armarios de expedientes y una caja fuerte empotrada en la pared.\nVes:\n  - caja fuerte [id: caja_fuerte] (cerrada)\nSalidas: sur.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"sur\"}",
+      "tool_output": "Caminas hacia sur. Llegas a Corredor.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"este\"}",
+      "tool_output": "Caminas hacia este. Llegas a Depósito.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"cajon_llaves\"}",
+      "tool_output": "cajón de llaves: Un cajón metálico etiquetado 'LLAVES'. Dentro cuelga una sola llave pequeña.\nContiene:\n  - llave de la caja fuerte [id: llave_caja]",
+      "error": null
+    },
+    {
+      "tool_name": "take",
+      "tool_input": "{\"item\": \"llave_caja\"}",
+      "tool_output": "Tomas llave de la caja fuerte.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"sur\"}",
+      "tool_output": "Error: no hay salida 'sur' desde aquí. Salidas disponibles: oeste.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"oeste\"}",
+      "tool_output": "Caminas hacia oeste. Llegas a Corredor.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"norte\"}",
+      "tool_output": "Caminas hacia norte. Llegas a Archivo.",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "Usas llave de la caja fuerte con caja fuerte. Se abre.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte: Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.\nContiene:\n  - documento confidencial [id: documento_confidencial]\n  - llave maestra [id: llave_maestra]",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"sur\"}",
+      "tool_output": "Caminas hacia sur. Llegas a Corredor.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"oeste\"}",
+      "tool_output": "Caminas hacia oeste. Llegas a Oficina principal.",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_maestra\", \"target\": \"puerta_principal\"}",
+      "tool_output": "Error: no llevas ningún 'llave_maestra'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Oficina principal.\nUna oficina con un escritorio amplio y una puerta principal blindada. Un corredor sale hacia el este.\nVes:\n  - escritorio [id: escritorio]\n  - puerta principal [id: puerta_principal] (cerrada)\nSalidas: este.\nLlevas: llave de la caja fuerte [id: llave_caja].",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Oficina principal.\nUna oficina con un escritorio amplio y una puerta principal blindada. Un corredor sale hacia el este.\nVes:\n  - escritorio [id: escritorio]\n  - puerta principal [id: puerta_principal] (cerrada)\nSalidas: este.\nLlevas: llave de la caja fuerte [id: llave_caja].",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"norte\"}",
+      "tool_output": "Error: no hay salida 'norte' desde aquí. Salidas disponibles: este.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"este\"}",
+      "tool_output": "Caminas hacia este. Llegas a Corredor.",
+      "error": null
+    },
+    {
+      "tool_name": "go",
+      "tool_input": "{\"direction\": \"norte\"}",
+      "tool_output": "Caminas hacia norte. Llegas a Archivo.",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte ya está abierta.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte: Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.\nContiene:\n  - documento confidencial [id: documento_confidencial]\n  - llave maestra [id: llave_maestra]",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte ya está abierta.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte: Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.\nContiene:\n  - documento confidencial [id: documento_confidencial]\n  - llave maestra [id: llave_maestra]",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte ya está abierta.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte: Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.\nContiene:\n  - documento confidencial [id: documento_confidencial]\n  - llave maestra [id: llave_maestra]",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte ya está abierta.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte: Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.\nContiene:\n  - documento confidencial [id: documento_confidencial]\n  - llave maestra [id: llave_maestra]",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte ya está abierta.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte: Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.\nContiene:\n  - documento confidencial [id: documento_confidencial]\n  - llave maestra [id: llave_maestra]",
+      "error": null
+    },
+    {
+      "tool_name": "use",
+      "tool_input": "{\"item\": \"llave_caja\", \"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte ya está abierta.",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"caja_fuerte\"}",
+      "tool_output": "caja fuerte: Una caja fuerte empotrada con una cerradura de llave plana. Cerrada.\nContiene:\n  - documento confidencial [id: documento_confidencial]\n  - llave maestra [id: llave_maestra]",
+      "error": null
+    }
+  ],
+  "num_tool_calls": 40,
+  "num_tool_errors": 0,
+  "calls_over_optimal": 27,
+  "latency_seconds": 37.777,
+  "input_tokens": 155171,
+  "output_tokens": 2014,
+  "rubric": {
+    "exploration_before_action": 2,
+    "no_redundant_actions": 0,
+    "no_hallucinated_ids": 2,
+    "error_recovery": 2,
+    "total": 6,
+    "max": 8,
+    "normalized": 0.75
+  },
+  "repeat_index": 0
+}

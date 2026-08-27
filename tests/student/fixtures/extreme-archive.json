@@ -1,0 +1,274 @@
+{
+  "scenario": "extreme-archive",
+  "difficulty": "extreme",
+  "description": "Archivo central de la facultad: una estantería con veinte expedientes voluminosos. Solo uno guarda la llave de la puerta; los demás son prosa burocrática extensa que, sumada, supera el contexto de modelos pequeños. Un agente single-loop no puede examinarlos todos sin desbordar.",
+  "user_message": "Te despiertas en el archivo central de la facultad. La puerta principal está cerrada con una cerradura institucional. La estantería frente a ti contiene veinte expedientes; cada uno parece un documento administrativo extenso y, a primera vista, indistinguible de los demás. Sospechas que solo uno guarda lo que necesitas. Encuentra la forma de salir sin perder el tiempo leyendo en vano.",
+  "goal": {
+    "type": "item_open",
+    "item": "puerta_principal"
+  },
+  "optimal_calls": 4,
+  "goal_achieved": false,
+  "goal_reason": "puerta principal está cerrada",
+  "answer": "",
+  "agent_error": "Se alcanzo el limite de iteraciones sin respuesta final.",
+  "run_error": null,
+  "steps": [
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_1\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_1'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_2\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_2'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_1\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_1'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_2\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_2'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_3\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_3'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_4\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_4'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_5\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_5'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_6\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_6'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_7\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_7'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_8\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_8'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_9\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_9'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_10\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_10'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_11\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_11'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_12\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_12'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_13\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_13'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_14\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_14'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_15\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_15'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_16\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_16'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_17\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_17'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    },
+    {
+      "tool_name": "examine",
+      "tool_input": "{\"target\": \"expediente_18\"}",
+      "tool_output": "Error: no existe ningún objeto con id 'expediente_18'.",
+      "error": null
+    },
+    {
+      "tool_name": "look",
+      "tool_input": "{}",
+      "tool_output": "Estás en Archivo central.\nUna sala alargada con olor a papel y polvo. Una estantería metálica recorre la pared norte, llena de expedientes encuadernados con tela gris e identificados solo por un número de caso. En la pared sur, la puerta principal con cerradura institucional. No hay ventanas; la luz viene de un fluorescente que zumba.\nVes:\n  - estantería del archivo [id: estanteria_archivo]\n  - puerta principal [id: puerta_principal] (cerrada)",
+      "error": null
+    }
+  ],
+  "num_tool_calls": 40,
+  "num_tool_errors": 0,
+  "calls_over_optimal": 36,
+  "latency_seconds": 40.582,
+  "input_tokens": 180734,
+  "output_tokens": 2243,
+  "rubric": {
+    "exploration_before_action": 1,
+    "no_redundant_actions": 0,
+    "no_hallucinated_ids": 0,
+    "error_recovery": 2,
+    "total": 3,
+    "max": 8,
+    "normalized": 0.375
+  },
+  "repeat_index": 0
+}

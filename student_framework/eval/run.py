@@ -24,7 +24,6 @@ Salidas (bajo `student_framework/eval/runs/<timestamp>/`):
 
 Requisitos: el módulo del agente (por defecto `student_framework`) debe
 exportar `build_agent`, y debe haber un proveedor LLM configurado
-(Bedrock con `BEDROCK_MODEL_ID`, u Ollama con `OLLAMA_HOST`). Ver README.
 """
 
 from __future__ import annotations
@@ -78,6 +77,49 @@ OPTIMAL_CALLS: dict[str, int] = {
     "extreme-archive": 4,
     "vault-combination": 21,
     "backtracking-vault": 18,
+}
+
+# --- Taxonomía de modos de fallo (US-04) --------------------------------------
+#
+# Clasifica POR QUÉ falló un caso, complementando la métrica binaria de éxito.
+# Determinista sobre la traza, sin coste de LLM (mismo criterio que la rúbrica).
+#
+# Precedencia ORDENADA, de específico a genérico: gana la primera que dispara.
+#
+#   1. infra_error            run_error is not None (fallo del entorno, no del agente)
+#   2. terminacion_prematura  goal falso ∧ agent_error is None ∧ run_error is None
+#   3. id_alucinado           ≥20% de pasos con id inexistente / no visible
+#   4. loop_navegacion        ≥25% de pasos `go` que devolvieron error
+#   5. loop_improductivo      ≥10% de pasos con output de no-op ("ya está abierta")
+#   6. loop_estancado         ≥55% de llamadas repetidas (tras agotar el presupuesto)
+#   7. objetivo_incompleto    (fallback)
+#
+# CALIBRACIÓN (reglas 3-5), sobre runs/20260827T003846Z — 8 casos, 4 fallos.
+# Cada umbral cae en un hueco vacío de esos datos:
+#   id_alucinado      archive 50%  vs  máx. resto  5%   (margen 10x)
+#   loop_navegacion   vault   65%  vs  máx. resto 10%   (margen 6.5x)
+#   loop_improductivo office  15%  vs  máx. resto  0%   (margen ∞)
+# "no llevas ningún X" queda EXCLUIDO de id_alucinado: dispara 20% en
+# color-locks y 17% en study-with-key, ambos exitosos.
+#
+# RECALIBRACIÓN (regla 6), sobre runs/20260827T221119Z — 24 corridas, 9 fallos.
+# Con sólo 4 fallos la repetición de llamadas parecía no discriminar
+# (`apartment-keys` repetía 78% y resolvía), así que se medía como evidencia
+# pero no clasificaba. Con 24 corridas esa decisión no se sostuvo: 6 de 9 fallos
+# caían en el fallback y TODOS repetían ≥61%, mientras los resueltos median 29%
+# (máx. 53%, con un único caso en 65%). De ahí la regla 6, con el umbral en el
+# hueco 53%–61%. Dos salvedades:
+#   · Margen estrecho frente a las reglas 3-5; revisar con más corridas.
+#   · La regla 6 sólo se alcanza tras descartar 1-5, o sea con el presupuesto
+#     agotado. Describe "se quedó sin pasos dando vueltas", no "repitió mucho":
+#     repetir NO predice fallar (hay un caso resuelto al 65%), pero sí describe
+#     CÓMO se agotó el presupuesto.
+
+FAILURE_THRESHOLDS = {
+    "id_alucinado": 0.20,
+    "loop_navegacion": 0.25,
+    "loop_improductivo": 0.10,
+    "loop_estancado": 0.55,
 }
 
 
@@ -236,6 +278,158 @@ def score_rubric(steps: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+# ------ Funciones auxiliares para detectar fallos de proceso ------
+
+def _is_nav_error(step: dict[str, Any]) -> bool:
+    """True si un `go` falló: el agente intentó moverse y no se movió.
+
+    Cubre las cuatro formas de fallo de `go` (sin salidas, dirección
+    inválida, paso bloqueado, sala desconocida). Todas devuelven un
+    `Error: ...` y todas significan lo mismo para el diagnóstico, así que
+    se detectan por el prefijo y no por la frase concreta.
+    """
+    if step.get("tool_name") != "go":
+        return False
+    return (step.get("tool_output") or "").strip().lower().startswith("error:")
+
+
+def _is_noop_output(step: dict[str, Any]) -> bool:
+    """True si la acción no cambió nada porque ya estaba hecha.
+
+    "ya está abierta" (`mia_world/tools.py`) es hoy el único mensaje de
+    no-op del mundo. El detector es exacto y completo, pero frágil: si se
+    agregan otros mensajes de este tipo, hay que sumarlos acá.
+    """
+    return "ya está abierta" in (step.get("tool_output") or "").lower()
+
+
+# ----- Funciones auxiliares para el calculo de señales ------
+
+
+def _failure_signals(case: dict[str, Any]) -> dict[str, Any]:
+    """Mide las señales de la traza: fracciones de cada tipo de problema.
+
+    Recorre `steps` una sola vez. Las fracciones se calculan sobre el
+    total de pasos (no sobre los pasos de cada verbo): separa mejor los
+    casos y evita dividir por cero en los escenarios de una sola sala,
+    que no registran `go`. Con `steps` vacío todas las fracciones son 0.
+
+    Se devuelven conteos además de fracciones para que la evidencia del
+    diagnóstico pueda citar "26/40" y no sólo "65%": el absoluto da la
+    escala, que en este dataset varía entre 6 y 40 pasos.
+    """
+    steps = case.get("steps") or []
+    total = len(steps)
+
+    def _frac(count: int) -> float:
+        return round(count / total, 3) if total else 0.0
+
+    missing_id = sum(1 for s in steps if _is_missing_id_output(s))
+    nav_error = sum(1 for s in steps if _is_nav_error(s))
+    noop = sum(1 for s in steps if _is_noop_output(s))
+
+    identities = [_call_identity(s) for s in steps]
+    repeated = len(identities) - len(set(identities))
+
+    return {
+        "num_steps": total,
+        "missing_id_count": missing_id,
+        "missing_id_frac": _frac(missing_id),
+        "nav_error_count": nav_error,
+        "nav_error_frac": _frac(nav_error),
+        "noop_count": noop,
+        "noop_frac": _frac(noop),
+        # Evidencia, NO criterio de clasificación: `apartment-keys` repite
+        # el 78 % de sus llamadas y resuelve el escenario.
+        "repeated_count": repeated,
+        "repeated_frac": _frac(repeated),
+        "hit_iteration_limit": bool(case.get("agent_error")),
+    }
+
+
+# ---- Función principal de clasificación de fallos -----
+
+
+def classify_failure(case: dict[str, Any]) -> dict[str, Any]:
+    """Diagnostica POR QUÉ falló un caso.
+
+    Las reglas, los umbrales y su calibración están en el bloque
+    "Taxonomía de modos de fallo (US-04)", más arriba en este módulo.
+    Se evalúan EN ORDEN, de específico a genérico, y devuelve la primera
+    que dispara.
+
+    Nunca devuelve `None`, pero la categoría sólo tiene sentido sobre un
+    caso fallido: quién la llama decide cuándo corresponde (ver
+    `run_scenario`). Para medir señales sobre un caso resuelto, usá
+    `_failure_signals` directamente.
+    """
+    signals = _failure_signals(case)
+    total = signals["num_steps"]
+
+    def _diagnosis(category: str, evidence: str) -> dict[str, Any]:
+        return {"category": category, "evidence": evidence, "signals": signals}
+
+    # 1. Fallo del entorno, no del agente. Va primero porque con
+    #    `run_error` el agente no llega a correr: `steps` queda vacío y
+    #    `agent_error` en None, así que sin este guard el caso caería en
+    #    `objetivo_incompleto` y se contaría como fallo del agente.
+    if case.get("run_error"):
+        return _diagnosis(
+            "infra_error",
+            "la corrida falló antes de poder evaluar al agente",
+        )
+
+    # 2. El bucle terminó por su cuenta: el agente creyó que había
+    #    terminado. `AgentResult.error` se setea ÚNICAMENTE al agotar
+    #    `max_iterations` (ver `MyAgent.run`), así que su ausencia en un
+    #    caso fallido equivale a un cierre voluntario. Si alguien agrega
+    #    otro `error=` en el bucle del agente, esta regla deja de valer.
+    if not case.get("agent_error"):
+        return _diagnosis(
+            "terminacion_prematura",
+            f"el bucle cerró solo tras {total} llamada(s), sin agotar el presupuesto",
+        )
+
+    # 3-6. Señales de frecuencia, de específico a genérico.
+    if signals["missing_id_frac"] >= FAILURE_THRESHOLDS["id_alucinado"]:
+        return _diagnosis(
+            "id_alucinado",
+            f"{signals['missing_id_count']}/{total} pasos sobre ids "
+            f"inexistentes o no visibles ({signals['missing_id_frac']:.0%})",
+        )
+
+    if signals["nav_error_frac"] >= FAILURE_THRESHOLDS["loop_navegacion"]:
+        return _diagnosis(
+            "loop_navegacion",
+            f"{signals['nav_error_count']}/{total} llamadas `go` "
+            f"devolvieron error ({signals['nav_error_frac']:.0%})",
+        )
+
+    if signals["noop_frac"] >= FAILURE_THRESHOLDS["loop_improductivo"]:
+        return _diagnosis(
+            "loop_improductivo",
+            f"{signals['noop_count']}/{total} acciones sobre un estado ya "
+            f"alcanzado ({signals['noop_frac']:.0%})",
+        )
+
+    # 6. Última señal, la más genérica: agotó el presupuesto dando vueltas
+    #    sobre sus propios pasos. Va al final justamente por genérica: la
+    #    repetición acompaña a casi cualquier atasco, así que sólo describe
+    #    el fallo cuando ninguna causa más específica lo explica.
+    if signals["repeated_frac"] >= FAILURE_THRESHOLDS["loop_estancado"]:
+        return _diagnosis(
+            "loop_estancado",
+            f"{signals['repeated_count']}/{total} llamadas repetidas "
+            f"({signals['repeated_frac']:.0%}) hasta agotar el presupuesto",
+        )
+
+    # 7. Fallback: agotó el presupuesto sin una firma dominante.
+    return _diagnosis(
+        "objetivo_incompleto",
+        f"agotó el presupuesto en {total} llamadas sin una causa dominante",
+    )
+
+
 def run_scenario(
     scenario: Scenario,
     *,
@@ -298,6 +492,11 @@ def run_scenario(
             "rubric": score_rubric(steps),
         }
     )
+    
+    # Diagnóstico: sólo tiene sentido sobre un caso fallido; en
+    # los resueltos queda en None para no inventar una categoría.
+    record["failure"] = classify_failure(record) if not achieved else None
+
     return record
 
 
@@ -321,6 +520,25 @@ def build_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
         bucket["total"] += 1
         if c["goal_achieved"]:
             bucket["solved"] += 1
+
+    # Desglose de fallos por categoría (US-04). El denominador son los
+    # casos fallidos, no el total: un escenario resuelto no tiene causa
+    # de fallo que contar. `infra_error` se cuenta acá pero NO es un fallo
+    # del agente; hay que poder descontarlo al leer la tabla.
+    failed = [c for c in cases if not c["goal_achieved"]]
+
+    failures_by_category: dict[str, int] = {}
+    for c in failed:
+        failure = c.get("failure")
+        if not failure:
+            continue  # corrida anterior a US-04, o caso sin diagnóstico.
+        category = failure["category"]
+        failures_by_category[category] = failures_by_category.get(category, 0) + 1
+
+    # Más frecuente primero: es lo que el lector busca arriba en la tabla.
+    failures_by_category = dict(
+        sorted(failures_by_category.items(), key=lambda kv: kv[1], reverse=True)
+    )
 
     rubrics = [c["rubric"] for c in cases if c.get("rubric")]
     rubric_dims = (
@@ -371,8 +589,82 @@ def build_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
         "total_input_tokens": sum(in_tokens) if in_tokens else None,
         "total_output_tokens": sum(out_tokens) if out_tokens else None,
         "rubric_avg": rubric_avg,
+        "failures_total": len(failed),
+        "failures_by_category": failures_by_category,
         "cases_with_run_error": sum(1 for c in cases if c["run_error"]),
     }
+
+
+def _render_failure_section(
+    summary: dict[str, Any], cases: list[dict[str, Any]]
+) -> list[str]:
+    """Arma la sección de análisis de errores del reporte (US-04).
+
+    Extraída a un helper —a diferencia de las demás secciones, que se
+    arman inline en `_render_report`— porque tiene lógica propia: un
+    cruce de datos (agrupar escenarios por categoría) y dos ramas
+    condicionales. Así también se puede testear sin renderizar el
+    reporte entero.
+
+    Devuelve las líneas Markdown; no escribe nada.
+    """
+    total_failures = summary.get("failures_total") or 0
+    by_category = summary.get("failures_by_category") or {}
+
+    lines: list[str] = []
+    lines.append("## Análisis de errores — modos de fallo (US-04)")
+    lines.append("")
+
+    if not total_failures:
+        lines.append("Sin fallos en esta corrida: no hay modos de fallo que desglosar.")
+        lines.append("")
+        return lines
+
+    # `failures_by_category` trae los conteos pero pierde el rastro de qué
+    # escenario cayó en cada categoría: se reconstruye desde `cases`.
+    scenarios_by_category: dict[str, list[str]] = {}
+    failed_cases = [c for c in cases if not c["goal_achieved"] and c.get("failure")]
+    for c in failed_cases:
+        category = c["failure"]["category"]
+        scenarios_by_category.setdefault(category, []).append(c["scenario"])
+
+    lines.append(
+        "Desglose de los fallos por causa. Los porcentajes son sobre el total "
+        f"de **fallos** ({total_failures}), no sobre el total de casos: un "
+        "escenario resuelto no tiene causa de fallo que contar."
+    )
+    lines.append("")
+    lines.append("| Categoría | Casos | % de fallos | Escenarios |")
+    lines.append("|---|---|---|---|")
+    for category, count in by_category.items():
+        scenarios = ", ".join(sorted(set(scenarios_by_category.get(category, []))))
+        lines.append(
+            f"| {category} | {count} | {count / total_failures:.0%} | "
+            f"{scenarios or '—'} |"
+        )
+    lines.append("")
+
+    if "infra_error" in by_category:
+        lines.append(
+            f"> **Nota.** {by_category['infra_error']} caso(s) son `infra_error`: "
+            "la corrida falló antes de poder evaluar al agente (p. ej. credenciales "
+            "vencidas). No son fallos del agente y hay que descontarlos al leer "
+            "esta tabla."
+        )
+        lines.append("")
+
+    lines.append("### Detalle por caso")
+    lines.append("")
+    lines.append("| Escenario | Dif. | Categoría | Evidencia |")
+    lines.append("|---|---|---|---|")
+    for c in failed_cases:
+        failure = c["failure"]
+        lines.append(
+            f"| {c['scenario']} | {c['difficulty']} | {failure['category']} | "
+            f"{failure['evidence']} |"
+        )
+    lines.append("")
+    return lines
 
 
 def _render_report(meta: dict[str, Any], summary: dict[str, Any], cases: list[dict[str, Any]]) -> str:
@@ -472,6 +764,7 @@ def _render_report(meta: dict[str, Any], summary: dict[str, Any], cases: list[di
         f"{ra.get('error_recovery')} | {ra.get('total')} | {ra.get('normalized')} |"
     )
     lines.append("")
+    lines.extend(_render_failure_section(summary, cases))
     return "\n".join(lines)
 
 
@@ -486,6 +779,65 @@ def _llm_provider_label() -> str:
         region = os.environ.get("AWS_REGION", "us-east-1")
         return f"Bedrock ({os.environ['BEDROCK_MODEL_ID']}, {region})"
     return "no configurado"
+
+
+def _case_filename(scenario_id: str, repeat: int, index: int) -> str:
+    """Nombre del registro de un caso; con repeticiones lleva sufijo `__rN`."""
+    return f"{scenario_id}.json" if repeat == 1 else f"{scenario_id}__r{index + 1}.json"
+
+
+def reclassify_run(run_dir: Path) -> int:
+    """Reclasifica los fallos de una corrida ya ejecutada, sin llamar al LLM.
+
+    Relee `summary.json`, vuelve a pasar `classify_failure` sobre cada caso
+    y reescribe los tres artefactos (`cases/*.json`, `summary.json` y
+    `report.md`). Permite ajustar la taxonomía o sus umbrales y ver el
+    efecto sobre una corrida real en segundos, sin volver a gastar tokens:
+    las trazas ya están en disco.
+    """
+    summary_path = run_dir / "summary.json"
+    if not summary_path.is_file():
+        raise SystemExit(f"No se encontró {summary_path}.")
+
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    meta = payload["meta"]
+    cases = payload["cases"]
+    repeat = meta.get("repeat", 1)
+    cases_dir = run_dir / "cases"
+
+    changed = 0
+    for case in cases:
+        before = (case.get("failure") or {}).get("category")
+        case["failure"] = (
+            classify_failure(case) if not case["goal_achieved"] else None
+        )
+        if before != (case.get("failure") or {}).get("category"):
+            changed += 1
+        fname = _case_filename(case["scenario"], repeat, case.get("repeat_index", 0))
+        (cases_dir / fname).write_text(
+            json.dumps(case, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+    summary = build_summary(cases)
+    summary_path.write_text(
+        json.dumps(
+            {"meta": meta, "summary": summary, "cases": cases},
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (run_dir / "report.md").write_text(
+        _render_report(meta, summary, cases), encoding="utf-8"
+    )
+
+    print(
+        f"# Reclasificados {len(cases)} caso(s); "
+        f"{changed} cambiaron de categoría.",
+        file=sys.stderr,
+    )
+    print(f"# Reporte: {run_dir / 'report.md'}", file=sys.stderr)
+    return 0
 
 
 def run_all(
@@ -553,11 +905,7 @@ def run_all(
             case["repeat_index"] = r
             cases.append(case)
 
-            fname = (
-                f"{scenario.id}.json"
-                if repeat == 1
-                else f"{scenario.id}__r{r + 1}.json"
-            )
+            fname = _case_filename(scenario.id, repeat, r)
             (cases_dir / fname).write_text(
                 json.dumps(case, indent=2, ensure_ascii=False), encoding="utf-8"
             )
@@ -640,7 +988,20 @@ def main(argv: list[str] | None = None) -> int:
             "y una tabla de estabilidad por escenario."
         ),
     )
+    parser.add_argument(
+        "--reclassify",
+        default=None,
+        metavar="RUN_DIR",
+        help=(
+            "Reclasifica los fallos de una corrida ya ejecutada y reescribe "
+            "sus artefactos, sin llamar al LLM. Útil tras ajustar la "
+            "taxonomía de modos de fallo o sus umbrales."
+        ),
+    )
     args = parser.parse_args(argv)
+
+    if args.reclassify:
+        return reclassify_run(Path(args.reclassify))
 
     if args.repeat < 1:
         parser.error("--repeat debe ser >= 1")

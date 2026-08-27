@@ -1,10 +1,15 @@
 # Informe Milestone 3 — Evaluación sobre un problema objetivo
 
 > **Estado del documento.** Completo: aproximación (§1), infraestructura y
-> métricas (§2), resultados con el agente adaptado (§3), experimentos (§4)
+> métricas (§2), resultados y análisis de errores (§3), experimentos (§4)
 > y limitaciones (§5). Los números provienen de corridas reales del arnés
 > sobre Bedrock `nova-lite`; ver la fecha de cada corrida en los reportes
 > bajo `student_framework/eval/runs/`.
+>
+> Los resultados principales (§3.2 y §3.3) corresponden a la **corrida
+> canónica** `runs/20260827T221119Z`: los 8 escenarios × 3 repeticiones,
+> 24 ejecuciones. Los experimentos de §4 se corrieron antes, con la misma
+> configuración base pero sin repeticiones salvo donde se indica.
 
 ## 1. Aproximación
 
@@ -84,7 +89,13 @@ python student_framework/eval/run.py            # los 8 escenarios
 python student_framework/eval/run.py --scenario easy
 python student_framework/eval/run.py --max-iterations 40
 python student_framework/eval/run.py --repeat 3  # promediar N corridas
+python student_framework/eval/run.py --reclassify runs/<timestamp>
 ```
+
+El último no ejecuta al agente: reprocesa las trazas ya guardadas de una
+corrida y reescribe sus artefactos. Sirve para ajustar la taxonomía de
+modos de fallo (§3.3) y ver el efecto sobre datos reales en segundos, sin
+volver a gastar tokens.
 
 Por cada caso, el arnés construye un agente **fresco** (para que no haya
 fuga de estado entre escenarios), registra las world-tools, ejecuta
@@ -199,46 +210,68 @@ tarea, el bucle y la memoria por sí solos no bastan.
 
 ### 3.2. Resultados con el agente adaptado
 
-Corrida completa de los 8 escenarios con el agente adaptado (US-01),
-proveedor **Bedrock `amazon.nova-lite-v1:0`**, `max_iterations=40`:
+**Corrida canónica** (`runs/20260827T221119Z`): los 8 escenarios con el
+agente adaptado (US-01), proveedor **Bedrock `amazon.nova-lite-v1:0`**,
+`max_iterations=40` y **3 repeticiones por escenario** — 24 corridas.
 
-| Escenario | Dif. | Goal | Calls | Óptimo | Errores | Latencia (s) |
+Reportamos sobre repeticiones y no sobre una corrida única por una razón
+que los propios datos justifican: con una sola pasada, `color-locks` y
+`library-search` cambian de resultado entre ejecuciones idénticas. Un
+pass/fail aislado en esos escenarios describe una tirada, no al agente
+(ver §5).
+
+| Escenario | Dif. | Éxito (k/N) | Tasa | Calls medio | Óptimo | Rúbrica media |
 |---|---|---|---|---|---|---|
-| study-with-key | easy | ✅ | 6 | 3 | 0 | 5.7 |
-| color-locks | medium | ✅ | 15 | 11 | 0 | 14.1 |
-| library-search | hard | ✅ | 17 | 7 | 0 | 15.1 |
-| extreme-archive | extreme | ✅ | 23 | 4 | 0 | 26.4 |
-| apartment-keys | medium | ✅ | 12 | 7 | 0 | 10.0 |
-| office-sequence | hard | ✅ | 21 | 13 | 0 | 17.6 |
-| vault-combination | extreme | ❌ | 40 | 21 | 0 | 33.1 |
-| backtracking-vault | extreme | ❌ | 40 | 18 | 0 | 39.5 |
+| study-with-key | easy | 3/3 | 1.00 | 6.3 | 3 | 6.7 |
+| color-locks | medium | 1/3 | 0.33 | 24.7 | 11 | 4.3 |
+| apartment-keys | medium | 3/3 | 1.00 | 13.7 | 7 | 5.7 |
+| library-search | hard | 2/3 | 0.67 | 16.3 | 7 | 7.7 |
+| office-sequence | hard | 2/3 | 0.67 | 35.3 | 13 | 5.7 |
+| extreme-archive | extreme | 3/3 | 1.00 | 23.3 | 4 | 7.7 |
+| vault-combination | extreme | 0/3 | 0.00 | 46.7 | 21 | 5.3 |
+| backtracking-vault | extreme | 1/3 | 0.33 | 34.3 | 18 | 5.0 |
 
-**Agregados** (`summary.json`): **6/8 resueltos** (éxito 0.75) · latencia
-media 20.2 s · 816 121 tok in / 10 378 out · **0 casos con error de
-ejecución**. Por dificultad: easy 1/1, medium 2/2, hard 2/2, extreme 1/3.
+**Agregados** (`summary.json`): **15/24 corridas exitosas** (tasa media
+**0.625**) · **0 casos con error de ejecución** · 2 681 136 tok in /
+34 099 out. Por dificultad: easy 3/3, medium 4/6, hard 4/6, extreme 4/9.
 
-**Rúbrica de calidad de proceso (US-03, 0–8).** Promedio **6.25/8**
-(normalizado 0.781):
+**Latencia: mediana 24.8 s** (media 40.9 s). Reportamos la mediana porque
+una única corrida de `library-search` tardó **381.6 s** frente a 13–14 s
+de sus dos repeticiones, con *menos* llamadas que ellas: es un pico del
+proveedor, no del agente. Sin ese caso la media cae a 26.1 s. Es un
+ejemplo de por qué la media sola engaña con n chico.
 
-| Escenario | Explor. | No-red. | No-halu. | Recup. | Total |
-|---|---|---|---|---|---|
-| study-with-key | 2 | 0 | 2 | 2 | 6/8 |
-| color-locks | 2 | 1 | 2 | 2 | 7/8 |
-| library-search | 2 | 1 | 2 | 2 | 7/8 |
-| extreme-archive | 2 | 2 | 2 | 2 | 8/8 |
-| apartment-keys | 2 | 0 | 1 | 2 | 5/8 |
-| office-sequence | 2 | 0 | 2 | 2 | 6/8 |
-| vault-combination | 2 | 0 | 1 | 2 | 5/8 |
-| backtracking-vault | 2 | 0 | 2 | 2 | 6/8 |
-| **promedio** | 2.0 | 0.5 | 1.75 | 2.0 | **6.25** |
+**Rúbrica de calidad de proceso (US-03, 0–8).** Promedio **6.0/8**
+(normalizado 0.75), sobre las 24 corridas:
 
-**Lectura.** El agente **siempre explora antes de actuar** (Explor. 2.0) y
-**se recupera de los errores** (Recup. 2.0); el punto flojo es la
-**redundancia** (No-red. 0.5): incluso cuando resuelve, repite acciones
-(p. ej. re-examinar objetos ya vistos), lo que explica que gaste más
-llamadas que el óptimo. Los dos `extreme` no resueltos igual puntúan 5–6/8
-en la rúbrica: fallan por **no completar el objetivo** (planificación de
-largo horizonte), no por explorar mal.
+| Dimensión | Promedio |
+|---|---|
+| Exploración antes de actuar | 1.92 |
+| Sin acciones redundantes | **0.54** |
+| Sin alucinar ids | 1.63 |
+| Recuperación de errores | 1.92 |
+| **Total** | **6.0** |
+
+**Lectura.** Tres resultados que la tasa agregada no muestra:
+
+1. **La dificultad nominal no predice el éxito.** `extreme-archive`
+   —diseñado para *no caber* en la ventana de contexto— sale **3/3**, con
+   23 llamadas medias y rúbrica 7.7. En cambio `color-locks` (medium) sale
+   1/3. Lo que separa a los escenarios no es su etiqueta sino si exigen
+   **planificación de largo horizonte con vuelta atrás**: los tres peores
+   (`vault-combination`, `backtracking-vault`, `color-locks`) son cadenas
+   largas de dependencias, no problemas de contexto.
+2. **La redundancia es el punto flojo estructural** (No-red. 0.54/2), y se
+   confirma en la eficiencia: el agente gasta entre 2× y 6× las llamadas
+   óptimas incluso cuando resuelve.
+3. **`vault-combination` es el único 0/3.** Cuando un escenario falla
+   siempre, ya no es varianza del modelo sino un techo real (§3.3).
+
+**Nota sobre el conteo de llamadas.** `vault-combination` registra 46 y 54
+llamadas con `max_iterations=40`. No es un desborde del tope: el bucle
+cuenta *iteraciones*, y nova-lite a veces pide **varias herramientas en un
+mismo turno**, cada una registrada como un `AgentStep`. El tope se respeta;
+lo que no es 1:1 es la equivalencia iteración↔llamada.
 
 **Bug destapado por el arnés.** La primera corrida completa con Bedrock
 falló en 5/8 escenarios con `ValidationException` de la API Converse
@@ -250,6 +283,138 @@ huérfanos que Bedrock rechaza. Se corrigió con
 `MyAgent._drop_orphan_tool_results`, que descarta esos resultados sin su
 `toolUse` previo. Esto ilustra el valor de la infraestructura de US-02: el
 arnés reproducible convirtió un fallo intermitente en un caso localizable.
+
+### 3.3. Análisis de errores: modos de fallo (US-04)
+
+Una tasa de éxito de 0.625 dice *cuánto* falla el agente, no *de qué*. Y el
+número agregado invita a leer los fallos como si fueran el mismo fallo
+repetido, cuando no lo son. Esta sección los categoriza.
+
+#### Cómo se computa
+
+Una **taxonomía determinista** sobre la traza de `steps`, en la misma
+línea de diseño que la rúbrica de §2.3: sin coste de LLM, reproducible y
+auditable. Implementada en `classify_failure` (`student_framework/eval/run.py`);
+el desglose se agrega en `build_summary` y se imprime en cada `report.md`.
+
+Las reglas se evalúan **en orden, de específico a genérico**, y gana la
+primera que dispara:
+
+| # | Categoría | Señal |
+|---|---|---|
+| 1 | `infra_error` | la corrida falló antes de evaluar al agente |
+| 2 | `terminacion_prematura` | el bucle cerró solo, sin agotar el presupuesto |
+| 3 | `id_alucinado` | ≥20 % de pasos sobre ids inexistentes o no visibles |
+| 4 | `loop_navegacion` | ≥25 % de pasos `go` que devolvieron error |
+| 5 | `loop_improductivo` | ≥10 % de pasos sobre un estado ya alcanzado |
+| 6 | `loop_estancado` | ≥55 % de llamadas repetidas hasta agotar el presupuesto |
+| 7 | `objetivo_incompleto` | (fallback) |
+
+El orden importa y no es cosmético: `vault-combination` presenta a la vez
+76 % de llamadas repetidas y 26 % de errores de navegación. Clasificar por
+frecuencia dominante lo etiquetaría como repetición, ocultando que el
+agente estuvo chocando contra una pared. La repetición va última porque
+acompaña a casi cualquier atasco: describe *cómo* se agotó el presupuesto,
+no *por qué*.
+
+La regla 1 tampoco es decorativa. Una corrida con credenciales vencidas
+produjo 8 fallos que el clasificador aísla como `infra_error`: sin esa
+regla, se contabilizarían como fallos del agente.
+
+#### Resultados
+
+Sobre los **9 fallos** de la corrida canónica:
+
+| Categoría | Casos | % de fallos | Escenarios |
+|---|---|---|---|
+| `loop_estancado` | 6 | 67 % | vault-combination (2), backtracking-vault (2), color-locks, office-sequence |
+| `terminacion_prematura` | 2 | 22 % | color-locks, library-search |
+| `loop_navegacion` | 1 | 11 % | vault-combination |
+
+Una traza de ejemplo por categoría, con la evidencia que emite el arnés:
+
+| Escenario | Categoría | Evidencia |
+|---|---|---|
+| backtracking-vault | `loop_estancado` | 35/40 llamadas repetidas (88 %) hasta agotar el presupuesto |
+| library-search | `terminacion_prematura` | el bucle cerró solo tras 13 llamadas, sin agotar el presupuesto |
+| vault-combination | `loop_navegacion` | 14/54 llamadas `go` devolvieron error (26 %) |
+
+#### Qué implica cada modo
+
+**`loop_estancado` (67 %) — el fallo dominante, y es nuestro.** El agente
+no se pierde ni alucina: repite entre el 61 % y el 88 % de sus llamadas
+hasta quedarse sin presupuesto. Sabe qué hacer paso a paso, pero **no
+lleva registro de lo que ya hizo**. Es una carencia del framework, no del
+modelo: un agente con memoria explícita de acciones ejecutadas (o una
+comprobación de no-op antes de invocar) evitaría la mayoría de estos
+casos. Es la mejora de mayor impacto que identificamos.
+
+**`terminacion_prematura` (22 %) — también nuestra, y más grave.** En
+`library-search` el agente hizo 13 llamadas (1 `look`, 11 `examine`, 1
+`use`), no tomó ningún objeto y **cerró el bucle a mitad de camino**,
+declarándolo en su respuesta final: *"No tengo ninguna otra idea de cómo
+salir de la sala"*. Lo notable es que ninguna métrica de proceso lo
+detecta: 0 errores, dentro de presupuesto y **rúbrica 8/8, el máximo
+posible**. Por todo indicador de comportamiento se ve impecable, y falló
+por completo.
+
+Es un fallo de **condición de terminación**: el bucle de M1 corta cuando
+el LLM devuelve texto sin `tool_calls`, así que basta con que el modelo se
+declare sin ideas para que el agente dé el problema por cerrado. Un cierre
+condicionado a verificación de meta —o un reintento con contexto de que el
+objetivo sigue pendiente— lo evitaría. Es el caso que mejor justifica por
+qué la métrica de éxito se comprueba sobre el **estado del mundo** y no
+sobre el texto del agente (§2.2).
+
+**`loop_navegacion` (11 %) — realimentación desaprovechada.** El agente
+insiste con direcciones inválidas mientras la herramienta le responde
+literalmente *"Salidas disponibles: sur"*. El dato correcto está en el
+historial y no se usa.
+
+**Lo que el desglose descarta.** Ningún fallo fue `id_alucinado` ni
+`infra_error` en esta corrida: el agente **no inventa objetos** y la
+infraestructura no falló una sola vez en 24 ejecuciones. Descartar causas
+es tan informativo como confirmarlas: el problema no es la percepción del
+entorno sino la gestión del propio progreso.
+
+#### Calibración, y una corrección de método
+
+Los umbrales de las reglas 3–5 se fijaron sobre una corrida de 8 casos
+(4 fallos), donde cada uno caía en un hueco vacío de los datos con márgenes
+de 10×, 6.5× e ∞. Con 4 fallos la repetición de llamadas parecía **no**
+discriminar —`apartment-keys` repetía 78 % y resolvía el escenario—, así
+que se medía como evidencia pero no clasificaba.
+
+Al aplicar esa taxonomía a las 24 corridas, **6 de 9 fallos cayeron en el
+fallback**: dos tercios sin diagnóstico. Y los seis repetían ≥61 %,
+mientras los casos resueltos median 29 % (máximo 53 %, con un único caso
+en 65 %). Con más datos, la señal que habíamos descartado sí separaba.
+
+De ahí la regla 6, con el umbral en el hueco 53 %–61 %. Tras recalibrar, el
+fallback quedó **vacío**: los 9 fallos tienen causa asignada. La
+reclasificación no requirió volver a ejecutar el agente — el flag
+`--reclassify` reprocesa las trazas ya guardadas en segundos y sin gastar
+tokens.
+
+Registramos esto como parte del método, no como una nota al pie: **una
+taxonomía calibrada con 4 observaciones no generalizó a 24**, y sólo se
+detectó porque el arnés permite validar sobre corridas repetidas.
+
+**Limitaciones que asumimos.**
+
+- El umbral de `loop_estancado` (55 %) tiene un **margen estrecho** —separa
+  53 % de 61 %— comparado con los de las reglas 3–5. Es el candidato a
+  revisar con más corridas.
+- **Tres categorías no dispararon** en esta corrida (`id_alucinado`,
+  `loop_improductivo`, `infra_error`). Las tres sí dispararon en corridas
+  anteriores, pero ninguna corrida sola ejercita las siete reglas.
+- La taxonomía clasifica **una causa por caso**. Cuando dos señales
+  coinciden, la precedencia decide y la otra queda sólo en las señales del
+  registro, no en la categoría.
+- Las reglas dependen de las **cadenas de texto exactas** que emiten las
+  world-tools. Un cambio de redacción en `mia_world` degradaría el
+  diagnóstico en silencio; por eso están fijadas como constantes en los
+  tests (`tests/student/test_failure_analysis.py`).
 
 ## 4. Experimentos
 
@@ -344,12 +509,13 @@ define *cuánto* margen hay para hacerlo.
 
 - **Varianza del LLM (limitación principal de la métrica).** La única
   fuente de no-determinismo del arnés es el modelo (temperatura 0.2, sin
-  seed). Observamos que un mismo prompt da 5/8 o 6/8 y que escenarios
-  individuales cambian de resultado entre corridas. **El pass/fail de una
-  sola corrida no es confiable.** Por eso implementamos el flag
-  `--repeat N` en el harness, que corre cada escenario N veces y reporta
-  la **tasa de éxito media** (pass@k) más una tabla de estabilidad por
-  escenario; §4.3 lo usa con N=3. Próximo paso: reportar también el
+  seed). **El pass/fail de una sola corrida no es confiable**, y la
+  corrida canónica lo cuantifica: 4 de los 8 escenarios tienen tasas
+  intermedias (1/3 o 2/3), es decir que cambian de resultado entre
+  ejecuciones idénticas. `color-locks` y `library-search` figuraban como
+  resueltos o fallados en corridas anteriores según la tirada. Por eso
+  todos los resultados principales se reportan sobre `--repeat 3`
+  (pass@k) con tabla de estabilidad. Próximo paso: reportar también el
   **desvío estándar** y subir N donde el presupuesto de tokens lo permita.
 - **Techo del modelo en horizonte largo.** vault-combination y
   backtracking-vault (`extreme`) exigen planificación de varios pasos y
@@ -368,7 +534,25 @@ define *cuánto* margen hay para hacerlo.
 - **`OPTIMAL_CALLS` mapeado a mano.** Los óptimos vienen de la tabla del
   enunciado (los JSON de escenario son FIJOS); si el dataset cambia, hay
   que actualizar el mapa.
-- **Análisis de errores (US-04).** Las trazas capturadas permiten
-  categorizar los modos de fallo ya identificados: no completar
-  cerraduras multi-pieza, perder el objetivo tras juntar las piezas,
-  loops de navegación, y (antes del fix) el crash de windowing.
+- **Punto ciego de la rúbrica: los loops de período corto.** El análisis
+  de errores destapó una debilidad de nuestra propia métrica cualitativa.
+  `_score_error_recovery` compara cada paso fallido **sólo con el
+  inmediatamente siguiente**: si son distintos, cuenta como recuperación.
+  Un agente atrapado alternando `este`/`oeste` contra dos salidas
+  inválidas obtiene por eso **2/2 en "recuperación de errores"**, pese a
+  26 llamadas fallidas seguidas. La rúbrica premia el cambio de acción,
+  no el progreso. El arreglo es evaluar una ventana de k pasos en lugar de
+  uno, detectando ciclos en vez de repeticiones inmediatas. Lo dejamos
+  documentado y no corregido: cambiar la rúbrica a esta altura invalidaría
+  la comparabilidad de §4.2 y §4.3, que ya la usan como medida.
+- **La rúbrica tampoco detecta el abandono.** El caso de
+  `terminacion_prematura` en `library-search` puntúa **8/8** —el máximo— y
+  falla por completo (§3.3). Ninguna de las cuatro dimensiones pregunta si
+  el agente *avanzó hacia la meta*: miden higiene de proceso, no progreso.
+  Una quinta dimensión de avance (p. ej. fracción de sub-objetivos
+  alcanzados) cerraría ese hueco.
+- **Taxonomía de fallos calibrada con pocos datos.** Los umbrales de
+  `classify_failure` se ajustaron sobre 4 fallos y no generalizaron a 24
+  (§3.3); tras recalibrar, el umbral de `loop_estancado` conserva un margen
+  estrecho (53 %–61 %). Con más corridas habría que revisarlo, y el flag
+  `--reclassify` permite hacerlo sin volver a gastar tokens.
