@@ -62,7 +62,7 @@ Las piezas de M1+M2 que este problema ejercita directamente:
   cada corrida parte de una `copy.deepcopy` fresca para no arrastrar
   estado entre repeticiones. Se usa en el experimento de §4.3.
 
-### 1.3. Adaptación del agente a la sala de escape (US-01)
+### 1.3. Adaptación del agente a la sala de escape
 
 La adaptación vive en el **system prompt** de `build_agent`: sobre el
 prompt de M1 (calculadora/clima/lector) se añade una sección de estrategia
@@ -168,11 +168,11 @@ exploraron con método o avanzaron por prueba y error. La rúbrica captura
 esa dimensión de calidad. Entre las dos formas que admite el enunciado
 —rúbrica vs. LLM-as-judge— elegimos la **rúbrica determinista** porque:
 
-- **Reproducibilidad**: es el objetivo central de US-02. La rúbrica es una
+- **Reproducibilidad**: es el objetivo central del arnés. La rúbrica es una
   función pura de la traza: dos corridas con la misma traza dan el mismo
   puntaje, sin la variabilidad de un juez LLM.
 - **Costo y velocidad**: no consume tokens ni añade latencia; puede correr
-  sobre todos los casos y en cada experimento de US-05 sin coste marginal.
+  sobre todos los casos y en cada experimento sin coste marginal.
 - **Auditabilidad**: cada punto se deriva de una regla explícita sobre
   `steps`, así que un fallo de puntaje es inspeccionable, no una opinión.
 
@@ -191,7 +191,7 @@ agrega en `build_summary`.
 
 Como línea de base ejecutamos la infraestructura con `build_agent` **tal
 cual** (system prompt de M1, orientado a calculadora/clima/lector). Este
-baseline documenta el punto de partida antes de US-01:
+baseline documenta el punto de partida antes de esa adaptación:
 
 | Escenario | Dif. | Goal | Calls | Óptimo | Errores |
 |---|---|---|---|---|---|
@@ -205,13 +205,13 @@ baseline documenta el punto de partida antes de US-01:
 world-tools** (0–1 llamadas) y no resuelve ningún escenario: responde con
 texto libre ("No puedo ayudarte…") porque su system prompt le indica que
 "la mayoría de preguntas NO requieren herramientas". Esto aísla con
-claridad el valor de la adaptación de US-01: sin un prompt orientado a la
+claridad el valor de la adaptación del prompt: sin uno orientado a la
 tarea, el bucle y la memoria por sí solos no bastan.
 
 ### 3.2. Resultados con el agente adaptado
 
 **Corrida canónica** (`runs/20260827T221119Z`): los 8 escenarios con el
-agente adaptado (US-01), proveedor **Bedrock `amazon.nova-lite-v1:0`**,
+agente adaptado, proveedor **Bedrock `amazon.nova-lite-v1:0`**,
 `max_iterations=40` y **3 repeticiones por escenario** — 24 corridas.
 
 Reportamos sobre repeticiones y no sobre una corrida única por una razón
@@ -241,7 +241,7 @@ de sus dos repeticiones, con *menos* llamadas que ellas: es un pico del
 proveedor, no del agente. Sin ese caso la media cae a 26.1 s. Es un
 ejemplo de por qué la media sola engaña con n chico.
 
-**Rúbrica de calidad de proceso (US-03, 0–8).** Promedio **6.0/8**
+**Rúbrica de calidad de proceso (0–8).** Promedio **6.0/8**
 (normalizado 0.75), sobre las 24 corridas:
 
 | Dimensión | Promedio |
@@ -281,10 +281,10 @@ al recortar el historial a `max_history_messages` podía cortar en medio de
 un grupo `assistant(tool_calls)`+resultados, dejando bloques `toolResult`
 huérfanos que Bedrock rechaza. Se corrigió con
 `MyAgent._drop_orphan_tool_results`, que descarta esos resultados sin su
-`toolUse` previo. Esto ilustra el valor de la infraestructura de US-02: el
+`toolUse` previo. Esto ilustra el valor de la infraestructura de evaluación: el
 arnés reproducible convirtió un fallo intermitente en un caso localizable.
 
-### 3.3. Análisis de errores: modos de fallo (US-04)
+### 3.3. Análisis de errores: modos de fallo
 
 Una tasa de éxito de 0.625 dice *cuánto* falla el agente, no *de qué*. Y el
 número agregado invita a leer los fallos como si fueran el mismo fallo
@@ -436,8 +436,8 @@ mismo prompt).
 contrato de mensajes de Bedrock en los escenarios largos (los que superan
 `max_history_messages` y por ende disparan el recorte). El fix elimina el
 100 % de los crashes y sube la tasa de éxito 3/8 → 5/8 sin tocar la
-estrategia del agente. Es un caso donde una decisión de memoria (US-02/M2)
-interactúa con el proveedor concreto (US-01).
+estrategia del agente. Es un caso donde una decisión de memoria de M2
+interactúa con el proveedor concreto.
 
 ### 4.2. Guiado de estrategia en el system prompt (rendimientos decrecientes)
 
@@ -469,10 +469,10 @@ diferencias es ruido, no señal. Se adoptó *v1* como configuración base.
 ### 4.3. Presupuesto de iteraciones `max_iterations` (40 → 10)
 
 **Qué se cambió.** Única variable: el tope de iteraciones del bucle del
-agente — 40 (base US-02) vs 10 — con todo lo demás igual (prompt v1,
+agente — 40 (la base del arnés) vs 10 — con todo lo demás igual (prompt v1,
 nova-lite). Para controlar la varianza del modelo (§5) se corrió el
 subconjunto **medium+hard** (4 escenarios) con **3 repeticiones** por
-escenario usando el nuevo flag `--repeat 3` (12 corridas por config).
+escenario usando el flag `--repeat 3` (12 corridas por config).
 
 | Escenario | Dif. | Éxito \@40 | Éxito \@10 | Calls medio \@40 | Rúbrica \@40 / \@10 |
 |---|---|---|---|---|---|

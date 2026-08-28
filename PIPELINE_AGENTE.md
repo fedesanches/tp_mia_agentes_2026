@@ -7,13 +7,13 @@ estructurada). Lo que M2 solo *robustece* (sliding window, manejo de
 errores en tools, reintentos ante fallos transitorios) queda fuera de
 este pipeline — sirve como referencia, no es parte del flujo conceptual.
 
-## Ciclo del agente (núcleo M1, unificado con M3 → US-01)
+## Ciclo del agente (núcleo M1, unificado con M3)
 
 El ciclo genérico de tool-use no cambia entre M1 y M3: solo se amplía
 horizontalmente el set de tools disponible en el paso 3, **sobre la
 misma instancia** que ya arma `build_agent()` (confirmado en
 `mia_world/cli.py`: registra las tools del mundo encima de las de M1, no
-en una instancia aparte). Lo único agregado en US-01 es una verificación
+en una instancia aparte). Lo único que agrega M3 es una verificación
 externa, después de una única llamada a `run`, que reemplaza "el LLM
 dice que terminó" por "el estado del mundo dice que terminó":
 

@@ -1,4 +1,4 @@
-"""Tests propios del grupo — Milestone 3, US-04 (análisis de errores).
+"""Tests propios del grupo — Milestone 3: análisis de modos de fallo.
 
 Blindan la **taxonomía de modos de fallo** de `student_framework/eval/run.py`.
 No verifican "que el código corra" —eso ya está validado contra las trazas
@@ -237,7 +237,7 @@ def test_build_summary_cuenta_solo_los_fallos():
 
 
 def test_build_summary_tolera_casos_sin_diagnostico():
-    """Las corridas anteriores a US-04 no traen `failure`: se cuentan sin categoría."""
+    """Una corrida anterior a la taxonomía no trae `failure`: se cuenta sin categoría."""
     viejo = _case(scenario="corrida-vieja")
     del viejo["failure"]
 
